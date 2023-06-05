@@ -120,8 +120,25 @@ def interval_t(size,num_val=50,kmax=None):
     if k_stop > size//2:## prohibit going larger than N/2
         k_stop = size//2
         print("Warning: k cannot be longer than N/2")
-        
-    k = np.logspace(start=np.log2(2),stop=np.log2(k_stop),base=2,num=num_val,dtype=np.int)
+
+    k = np.logspace(start=np.log2(2),stop=np.log2(k_stop), base=2,num=num_val,dtype=np.float)
+    #k = k.astype(dtype=np.int, copy=False)
+    #y = np.linspace(np.log2(2), np.log2(k_stop), num=num_val, endpoint=True)
+    #y = np.power(2,y)
+    #print(y)
+    #y[1] = 100.
+
+    print(k[len(k)-1])
+
+
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! OWN CODE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Because bug in np.logspace with dtype = np.float?
+    # 218 - 108 integer; 220 - 110 integer;
+    #print(y)
+    #y = y.astype(dtype=np.int, copy=False)
+    #print(y)
+
+
     return np.unique(k);
 
 def init_lib():
@@ -136,3 +153,16 @@ def init_lib():
     lib.curve_length.argtypes = [rwptr_sizet, ctypes.c_size_t, rwptr, ctypes.c_size_t, rwptr]
 
     return lib;
+
+import matplotlib.pyplot as plt
+N = 10
+x1 = np.logspace(0.1, 1, N, endpoint=True)
+x2 = np.logspace(0.1, 1, N, endpoint=False)
+y = np.zeros(N)
+plt.plot(x1, y, 'o')
+print(interval_t(100))
+plt.plot(x2, y + 0.5, 'o')
+
+plt.ylim([-0.5, 1])
+
+plt.show()
