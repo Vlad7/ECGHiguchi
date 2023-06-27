@@ -5,11 +5,14 @@ Higuchi Fractal Dimension according to:
 T. Higuchi, Approach to an Irregular Time Series on the
 Basis of the Fractal Theory, Physica D, 1988; 31: 277-283.
 """
-
+import decimal
 import os
 import ctypes
 import numpy as np
 from numpy.ctypeslib import ndpointer
+from decimal import *
+import math
+
 
 def curve_length(X,opt=True,num_k=50,k_max=None):
     """
@@ -41,9 +44,9 @@ def curve_length(X,opt=True,num_k=50,k_max=None):
 
     ### C library
     if opt:
-        X = np.require(X, float, ('C', 'A'))
-        k_arr = np.require(k_arr, ctypes.c_size_t, ('C', 'A'))
-        Lk = np.require(Lk, float, ('C', 'A'))
+        X = np.require(X, float, ('C', 'A'))                                                # READ MORE ABOUT
+        k_arr = np.require(k_arr, ctypes.c_size_t, ('C', 'A'))                              # READ MORE ABOUT
+        Lk = np.require(Lk, float, ('C', 'A'))                                              # READ MORE ABOUT
         ## Load library here
         libhfd = init_lib()
         ## Run the C code here
@@ -121,15 +124,34 @@ def interval_t(size,num_val=50,kmax=None):
         k_stop = size//2
         print("Warning: k cannot be longer than N/2")
 
-    k = np.logspace(start=np.log2(2),stop=np.log2(k_stop), base=2,num=num_val,dtype=np.float)
+    print(np.log2(k_stop))
+    np.set_printoptions(precision=30)
+
+    print(np.longdouble(math.log2(np.longdouble(k_stop))))
+    k = np.logspace(start=np.log2(2),stop=np.log2(k_stop), endpoint=True, base=2,num=num_val,dtype=np.int)
+
+
+
+    #k1 = np.around(k, decimals=14)
+    #print(k1)
     #k = k.astype(dtype=np.int, copy=False)
     #y = np.linspace(np.log2(2), np.log2(k_stop), num=num_val, endpoint=True)
     #y = np.power(2,y)
     #print(y)
     #y[1] = 100.
+    #getcontext().prec = 28
+    #print(Decimal(math.log2(Decimal(k_stop))))
+
+    #y = np.linspace(Decimal(np.log2(2)), Decimal(math.log2(Decimal(k_stop))), endpoint=True, num=num_val, axis=0)
+
+
+    #print(y)
+    #if dtype is None:
+    #    return _nx.power(base, y)
+    #return _nx.power(base, y).astype(dtype, copy=False)
 
     print(k[len(k)-1])
-
+    print(k)
 
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! OWN CODE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # Because bug in np.logspace with dtype = np.float?
