@@ -88,47 +88,36 @@ class RECORD:
                 print(RECORD.DATABASE[en][x])
                 print(RECORD.DATABASE[en][x].ECG_1)
                 print(RECORD.DATABASE[en][x].ECG_2)
-
-
-
-
-def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
+def calculate_higuchi(dictionary, type_of_ecg_cut, num_k_value=50, k_max_value=None):
 
     """For the case when two ECG.
         Input parameters:
         num_k_value - number of k values
         k_max_value - value of Kmax"""
 
-    """
     dictionary_HFD_ECG_1 = {}
     dictionary_HFD_ECG_2 = {}
-    
+
+    dictionary_HFD_ECG_1_2 = {}
+
     dictionary_ages = {}
-    """
-
-
-
 
     ECG_count_per_age_group_dictionary = {}
 
     Higuchi_average_per_age_group_dictionary = {}
 
+    for key in dictionary.keys():
+
+        HFD_1 = HiguchiFractalDimension.hfd(np.array(dictionary[key].ECG_1), opt=True, num_k=num_k_value, k_max=k_max_value)
+        HFD_2 = HiguchiFractalDimension.hfd(np.array(dictionary[key].ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
+
+        if (not math.isnan(HFD_1)):
+            dictionary_HFD_ECG_1[key] = HFD_1
+
+        if (not math.isnan(HFD_2)):
+            dictionary_HFD_ECG_2[key] = HFD_2
 
 
-    HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1), opt=True, num_k=num_k_value, k_max=k_max_value)
-    HFD_2 = HiguchiFractalDimension.hfd(np.array(ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
-
-    """
-    if (not math.isnan(HFD_1)):
-        dictionary_HFD_ECG_1[ecg.Id] = HFD_1
-
-    if (not math.isnan(HFD_2)):
-        dictionary_HFD_ECG_2[ecg.Id] = HFD_2"""
-
-    if ((not math.isnan(HFD_1)) and (not math.isnan(HFD_2))):
-        return [HFD_1, HFD_2]
-    else:
-        return None
 
 
     # For testing
@@ -138,24 +127,15 @@ def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
     # Intersect of two sets
     keys = list(set(dictionary_HFD_ECG_1.keys()) & set(dictionary_HFD_ECG_2.keys()))
 
-    """dictionary_ages = {}
+
     for key in keys:
         dictionary_HFD_ECG_1_2[key] = [dictionary_HFD_ECG_1[key], dictionary_HFD_ECG_2[key]]
-        dictionary_ages[key] = age_groups[ecg.AgeGroup]
+        dictionary_ages[key] = age_groups[dictionary[key].AgeGroup]
 
-
-
-
-
-
-
-
-
-
-        if (ECG_count_per_age_group_dictionary.keys().__contains__(age_groups[ecg.AgeGroup])):
-            ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] += 1
+        if (ECG_count_per_age_group_dictionary.keys().__contains__(age_groups[dictionary[key].AgeGroup])):
+            ECG_count_per_age_group_dictionary[age_groups[dictionary[key].AgeGroup]] += 1
         else:
-            ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] = 1
+            ECG_count_per_age_group_dictionary[age_groups[dictionary[key].AgeGroup]] = 1
 
     age_category_ids_dictionary = {}
 
@@ -186,14 +166,35 @@ def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
     print(HFD_average_by_age_range)
     #print(dictionary_HFD_ECG_1)
     #print(dictionary_HFD_ECG_2)
-    #print(dictionary_HFD_ECG_1_2)"""
+    #print(dictionary_HFD_ECG_1_2)
+
+    # ECG 1 and 2 simulationusly
+
+    with open('HFD_' + type_of_ecg_cut.name + '.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+        for key in dictionary_HFD_ECG_1_2.keys():
+            spamwriter.writerow([key, dictionary_ages[key], localize_floats(dictionary_HFD_ECG_1[key]), localize_floats(dictionary_HFD_ECG_2[key]), RECORD.DATABASE[type_of_ecg_cut][key].Sex, RECORD.DATABASE[type_of_ecg_cut][key].BMI])
 
 
     # Save age statistics
-    """
-    
-"""
 
+    with open('number_of_ECG_per_age_range_' + type_of_ecg_cut.name + '.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+        for key in ECG_count_per_age_group_dictionary.keys():
+            spamwriter.writerow([key, ECG_count_per_age_group_dictionary[key]])
+
+    with open('HFD_average_of_ECG_per_age_range_' + type_of_ecg_cut.name + '.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+        for key in HFD_average_by_age_range.keys():
+            spamwriter.writerow([key, localize_floats(HFD_average_by_age_range[key][0]), localize_floats(HFD_average_by_age_range[key][1])])
+
+    return dictionary_HFD_ECG_1_2
 
     """
     print("ID: " + row[0])
@@ -236,211 +237,97 @@ def localize_floats(row):
 
 def read_ECG_data(standart_length, cut_method, one_minute_pass):
 
-        """ Open csv info file, print header and information for each record. Then fill ECG_dictionary with keys without
-         passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD method"""
+    """ Open csv info file, print header and information for each record. Then fill ECG_dictionary with keys without
+     passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD method"""
 
-        HFD_OF_ECG_1_AND_2 = {}
-        AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
-        ECG_COUNT_PER_EACH_AGE_GROUP = {}
-        HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP = {}
-        AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES = {}
+    old_ecg_dictionary = {}
+    old_ecg_dictionary2 = {}
 
-        SEXES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
-        BMIS_FOR_IDS_OF_BOTH_HFD_VALUES = {}
-        LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES = {}
+    if (one_minute_pass):
+        minute_points_from_ECG_start = 60000
+    else:
+        minute_points_from_ECG_start = 0
 
+    with open(path+'/'+ csv_info_file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
 
-        if (one_minute_pass):
-            minute_points_from_ECG_start = 60000
-        else:
-            minute_points_from_ECG_start = 0
+        line_count = 0
 
-        with open(path+'/'+ csv_info_file) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+        for row in csv_reader:
+            if line_count == 0:
+                print(f'Column names are {", ".join(row)} ')
+                line_count += 1
+            else:
+                # Check if id and age_group is not NaN
 
-            line_count = 0
+                if (row[0] != 'NaN' and row[1] != 'NaN'):
+                    print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
 
-            for row in csv_reader:
-                if line_count == 0:
-                    print(f'Column names are {", ".join(row)} ')
-                    line_count += 1
-                else:
-                    # Check if id and age_group is not NaN
+                    length = find_length_of_record(row[0])
 
-                    if(row[0]>'0100'):
+                    print("Points in ECG: " + str(length))
+
+                    record = None
+
+                    """Check, if ECG length > 1 min"""
+                    if (one_minute_pass and length <= minute_points_from_ECG_start):
+                        line_count += 1
                         continue
 
-                    if (row[0] != 'NaN' and row[1] != 'NaN'):
-                        print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
+                    ### Select method of cut of ECG ###
 
-                        length = find_length_of_record(row[0])
+                    ### Warning !!! For ECG length more than 1 min
 
-                        print("Points in ECG: " + str(length))
+                    if (cut_method == TypeOfECGCut.full):
 
-                        record = None
+                        record = open_record(row[0], minute_points_from_ECG_start, None)
 
-                        """Check, if ECG length > 1 min"""
-                        if (one_minute_pass and length <= minute_points_from_ECG_start):
-                            line_count += 1
-                            continue
+                    if (cut_method == TypeOfECGCut.start):
+                        record = open_record(row[0], minute_points_from_ECG_start, standart_length)
 
-                        ### Select method of cut of ECG ###
+                    if (cut_method == TypeOfECGCut.end):
 
-                        ### Warning !!! For ECG length more than 1 min
+                        delta = 0
 
-                        if (cut_method == TypeOfECGCut.full):
+                        if ((length - standart_length) >= minute_points_from_ECG_start):
+                            pass
+                        else:
+                            delta = length - standart_length - minute_points_from_ECG_start
 
-                            record = open_record(row[0], minute_points_from_ECG_start, None)
+                        record = open_record(row[0], length - standart_length - delta, None)
 
-                        if (cut_method == TypeOfECGCut.start):
+                    if (cut_method == TypeOfECGCut.middle):
+
+                        # Test this case for reliable situation.
+                        # If left_length and right length is different cut windows is translated left on 1 point than right
+                        left_length = (length - minute_points_from_ECG_start  - standart_length) // 2
+
+                        if (left_length >= 0):
+
+                            record = open_record(row[0], minute_points_from_ECG_start + left_length, minute_points_from_ECG_start + left_length + standart_length)
+                        else:
                             record = open_record(row[0], minute_points_from_ECG_start, standart_length)
 
-                        if (cut_method == TypeOfECGCut.end):
 
-                            delta = 0
+                    ################################################
+                    ecg = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], record[0], record[1])
 
-                            if ((length - standart_length) >= minute_points_from_ECG_start):
-                                pass
-                            else:
-                                delta = length - standart_length - minute_points_from_ECG_start
+                    #if(row[0]<'0162'):
 
-                            record = open_record(row[0], length - standart_length - delta, None)
-
-                        if (cut_method == TypeOfECGCut.middle):
-
-                            # Test this case for reliable situation.
-                            # If left_length and right length is different cut windows is translated left on 1 point than right
-                            left_length = (length - minute_points_from_ECG_start  - standart_length) // 2
-
-                            if (left_length >= 0):
-
-                                record = open_record(row[0], minute_points_from_ECG_start + left_length, minute_points_from_ECG_start + left_length + standart_length)
-                            else:
-                                record = open_record(row[0], minute_points_from_ECG_start, standart_length)
-
-
-                        if not isinstance(record, list):
-
-                            continue
-
-                        ################################################
-                        #ecg = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], record[0], record[1])
-
-                        #if(row[0]<'0162'):
-
-                        #old_ecg_dictionary[row[0]] = ecg
-
-                        result = calculate_higuchi(record[0], record[1])
-
-
-                        #For the case, when HFD_1 and HFD_2 simulationusly
-
-                        if result != None:
-                            HFD_OF_ECG_1_AND_2[row[0]] = result
-                            AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = row[1]
-                            AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = age_groups[row[1]]
-                            SEXES_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = gender[row[2]]
-                            BMIS_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = row[3]
-                            LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = row[4]
-
-                            # Count number of ECG's with both HFD values per each age group
-
-                            if (ECG_COUNT_PER_EACH_AGE_GROUP.keys().__contains__(age_groups[row[1]])):
-                                ECG_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] += 1
-                            else:
-                                ECG_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] = 1
-
-                        if(line_count>10000):
-                            break
-
-
-                    line_count += 1
+                    old_ecg_dictionary[row[0]] = ecg
 
 
 
-        #RECORD.DATABASE[cut_method] = old_ecg_dictionary
-
-        print(HFD_OF_ECG_1_AND_2)
-        write_HFD_calculated_values_to_csv(HFD_OF_ECG_1_AND_2, AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES, AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES, cut_method, SEXES_FOR_IDS_OF_BOTH_HFD_VALUES,BMIS_FOR_IDS_OF_BOTH_HFD_VALUES,LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES)
+                line_count += 1
 
 
 
-        ##########################################################################################################
-        ##########################################################################################################
 
-        AGE_CATEGORIES_WITH_IDS = {}
+    RECORD.DATABASE[cut_method] = old_ecg_dictionary
 
-        # Fill dictionary with age ranges as keys and lists of id's as values. For each age range list of id's
-
-        for id in AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES.keys():
-
-            if AGE_CATEGORIES_WITH_IDS.keys().__contains__(AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES[id]):
-                AGE_CATEGORIES_WITH_IDS[AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES[id]].append(id)
-            else:
-                AGE_CATEGORIES_WITH_IDS[AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES[id]] = [id]
+    #RECORD.print_database()
 
 
-        HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP = {}
-
-
-
-        for age_range in AGE_CATEGORIES_WITH_IDS.keys():
-
-            HFD_1_average = 0
-            HFD_2_average = 0
-
-            for id in AGE_CATEGORIES_WITH_IDS[age_range]:
-                HFD_1_average += HFD_OF_ECG_1_AND_2[id][0]
-                HFD_2_average += HFD_OF_ECG_1_AND_2[id][1]
-
-            length_of_age_categories_with_id_list = len(AGE_CATEGORIES_WITH_IDS[age_range])
-            HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP[age_range] = [HFD_1_average / length_of_age_categories_with_id_list, HFD_2_average / length_of_age_categories_with_id_list]
-
-
-            #################################################################################################################
-            #################################################################################################################
-
-        write_number_of_ECGs_per_age_range_for_both_HFD(ECG_COUNT_PER_EACH_AGE_GROUP, cut_method)
-        write_average_HFD_values_for_each_age_range(HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP, cut_method)
-
-        print(AGE_CATEGORIES_WITH_IDS)
-        print(HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP)
-        #print(dictionary_HFD_ECG_1)
-        #print(dictionary_HFD_ECG_2)
-        #print(dictionary_HFD_ECG_1_2)"""
-
-        #RECORD.print_database()
-
-
-def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, ):
-    # ECG 1 and 2 simulationusly
-
-    with open('HFD_calculated_after_one_minute_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=';',
-                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-        for key in hfd_of_ecg_1_and_2.keys():
-            spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1_and_2[key][0]),
-                                 localize_floats(hfd_of_ecg_1_and_2[key][1]), sexes[key], bmis[key], length[key]])
-
-        """, RECORD.DATABASE[type_of_ecg_cut][key].Sex,
-                                 RECORD.DATABASE[type_of_ecg_cut][key].BMI]"""
-def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group, type_of_ecg_cut):
-    with open('number_of_ECGs_per_each_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=';',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-        for key in ecg_count_per_each_age_group.keys():
-            spamwriter.writerow([key, ecg_count_per_each_age_group[key]])
-
-def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group, type_of_ecg_cut):
-    with open('HFD_average_of_ECG_per_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=';',
-                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-        for key in higuchi_average_per_each_age_group.keys():
-            spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key][0]),
-                                     localize_floats(higuchi_average_per_each_age_group[key][1])])
 def open_record(id, min_point, max_point):
 
     """ Open each record with ECG by Id
@@ -678,7 +565,8 @@ if __name__ == '__main__':
     #open_record('0637', 0, 480501)
     #number_of_ECG_by_each_age_group()
     read_ECG_data(minimum_length, TypeOfECGCut.full, True)
-
+    result = calculate_higuchi(RECORD.DATABASE[TypeOfECGCut.full], TypeOfECGCut.full)
+    print(result)
 
     ################################################################################################################
 
