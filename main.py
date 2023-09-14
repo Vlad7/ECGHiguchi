@@ -46,12 +46,14 @@ import csv
 #######################################################################################################################
 
 # Path to dataset of ECG
-path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+load_data_online = False
+path = 'D:\\SCIENCE\\autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0\\autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
 minimum_length_of_ECG = 480501
+average_length_of_ECG = 1140000
 
 
 # ECG_dictionary with information about ECG
@@ -455,12 +457,17 @@ def open_record(id, min_point, max_point):
     # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
 
     try:
-        record = wfdb.rdrecord(
-            path + '/' + id, min_point, max_point, [0, 1])
+        if (load_data_online == True):
+            record = wfdb.rdrecord(
+                id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular/1.0.0/')
+        else:
+            record = wfdb.rdrecord(
+                path + '/' + id, min_point, max_point, [0, 1])
+
     except:
         return math.nan
 
-    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
     #display(record.__dict__)
 
 
@@ -584,6 +591,39 @@ def find_minimum_length_of_records():
     # result on dataset 480501
     return min_length
 
+def find_average_length_of_records():
+    """Find minimum length of ECG record among all dataset"""
+
+    min_length = 0
+    id = 1
+    """
+    with open(path + '/' + csv_info_file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+
+        for row in csv_reader:
+            if line_count == 0:
+                line_count += 1
+            else:
+                # Check if id and age_group is not NaN
+                if (row[0] != 'NaN' and row[1] != 'NaN'):
+
+                    length = find_length_of_record(row[0])
+
+                    if(not (math.isnan(length))):
+                        if(length < min_length):
+                            min_length = length
+                            id = line_count
+
+
+                line_count += 1
+    """
+
+    print(id)
+
+    # result on dataset 480501 ... XXXX
+    return min_length
+
 def find_maximum_length_of_records():
     """Find maximum length of ECG record among all dataset"""
 
@@ -615,8 +655,12 @@ def find_maximum_length_of_records():
 
 def find_length_of_record(id):
     try:
-        record = wfdb.rdrecord(
-            path + '/' + id, 0, None, [0, 1])
+        if (load_data_online == True):
+            record = wfdb.rdrecord(
+                id, 0, None, [0, 1], pn_dir='autonomic-aging-cardiovascular/1.0.0/')
+        else:
+            record = wfdb.rdrecord(
+                path + '/' + id, 0, None, [0, 1])
     except:
         return math.nan
 
