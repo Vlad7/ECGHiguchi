@@ -46,14 +46,12 @@ import csv
 #######################################################################################################################
 
 # Path to dataset of ECG
-load_data_online = False
-path = 'D:\\SCIENCE\\autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0\\autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
 minimum_length_of_ECG = 480501
-average_length_of_ECG = 1140000
 
 
 # ECG_dictionary with information about ECG
@@ -236,10 +234,12 @@ with open('number_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
 def localize_floats(row):
     return str(row).replace('.', ',') if isinstance(row, float) else row
 
-def read_ECG_data(standart_length, cut_method, one_minute_pass):
+def read_ECG_data(standart_length, cut_method, minutes_passed):
 
         """ Open csv info file, print header and information for each record. Then fill ECG_dictionary with keys without
-         passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD method"""
+         passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD
+
+         Check if minutes_passed < standart_length"""
 
         HFD_OF_ECG_1_AND_2 = {}
         AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
@@ -251,11 +251,7 @@ def read_ECG_data(standart_length, cut_method, one_minute_pass):
         BMIS_FOR_IDS_OF_BOTH_HFD_VALUES = {}
         LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES = {}
 
-
-        if (one_minute_pass):
-            minute_points_from_ECG_start = 60000
-        else:
-            minute_points_from_ECG_start = 0
+        minute_points_from_ECG_start = 60000 * minutes_passed
 
         with open(path+'/'+ csv_info_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -281,8 +277,8 @@ def read_ECG_data(standart_length, cut_method, one_minute_pass):
 
                         record = None
 
-                        """Check, if ECG length > 1 min"""
-                        if (one_minute_pass and length <= minute_points_from_ECG_start):
+                        """Check, if ECG length > 1 min. Check this method"""
+                        if (length < minute_points_from_ECG_start and length < standart_length):
                             line_count += 1
                             continue
 
@@ -457,17 +453,12 @@ def open_record(id, min_point, max_point):
     # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
 
     try:
-        if (load_data_online == True):
-            record = wfdb.rdrecord(
-                id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular/1.0.0/')
-        else:
-            record = wfdb.rdrecord(
-                path + '/' + id, min_point, max_point, [0, 1])
-
+        record = wfdb.rdrecord(
+            path + '/' + id, min_point, max_point, [0, 1])
     except:
         return math.nan
 
-    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
     #display(record.__dict__)
 
 
@@ -591,39 +582,6 @@ def find_minimum_length_of_records():
     # result on dataset 480501
     return min_length
 
-def find_average_length_of_records():
-    """Find minimum length of ECG record among all dataset"""
-
-    min_length = 0
-    id = 1
-    """
-    with open(path + '/' + csv_info_file) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        line_count = 0
-
-        for row in csv_reader:
-            if line_count == 0:
-                line_count += 1
-            else:
-                # Check if id and age_group is not NaN
-                if (row[0] != 'NaN' and row[1] != 'NaN'):
-
-                    length = find_length_of_record(row[0])
-
-                    if(not (math.isnan(length))):
-                        if(length < min_length):
-                            min_length = length
-                            id = line_count
-
-
-                line_count += 1
-    """
-
-    print(id)
-
-    # result on dataset 480501 ... XXXX
-    return min_length
-
 def find_maximum_length_of_records():
     """Find maximum length of ECG record among all dataset"""
 
@@ -652,15 +610,74 @@ def find_maximum_length_of_records():
 
     return max_length
 
+def find_length_of_every_ECG():
+
+    length_of_every_ECG = {}
+
+    with open(path + '/' + csv_info_file) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+
+        for row in csv_reader:
+            if line_count == 0:
+                line_count += 1
+            else:
+                # Check if age_group is not NaN // Maybe for id too
+                if (not (row[1] == 'NaN')):
+
+                    length = find_length_of_record(row[0])
+
+                    if(not (math.isnan(length))):
+                        length_of_every_ECG[row[0]] = length
+
+    return length_of_every_ECG
+
+
+def find_average_length_of_records(length_of_every_ECG):
+    """Find average length of ECG records among all dataset"""
+
+    length_of_every_ECG
+
+    summ = 0
+    count = 0
+
+    for key in length_of_every_ECG.keys():
+
+        summ += length_of_every_ECG[key]
+        count += 1
+
+    average = summ / count
+
+    return average
+
+
+def find_id_nearest_to_average_record(length_of_every_ECG, average, passed_minutes):
+
+        """Check method correctness!"""
+
+        average += passed_minutes
+
+        distance = math.inf
+        id = 0
+
+        for key in length_of_every_ECG.keys():
+            value = length_of_every_ECG[key]
+            new_distance = value - average
+
+            new_distance_abs = math.fabs(new_distance)
+
+            if new_distance_abs < distance and new_distance <= 0:    # Last condition for rounding to lower value of ECG length sample nearest to average + minutes value
+                distance = new_distance_abs
+                id = key
+
+        return id
+
+
 
 def find_length_of_record(id):
     try:
-        if (load_data_online == True):
-            record = wfdb.rdrecord(
-                id, 0, None, [0, 1], pn_dir='autonomic-aging-cardiovascular/1.0.0/')
-        else:
-            record = wfdb.rdrecord(
-                path + '/' + id, 0, None, [0, 1])
+        record = wfdb.rdrecord(
+            path + '/' + id, 0, None, [0, 1])
     except:
         return math.nan
 
@@ -719,9 +736,18 @@ if __name__ == '__main__':
     #minimum_length = find_minimum_length_of_records()
     minimum_length = 480501
 
+    #length_of_every_ECG = find_length_of_every_ECG()
+    #average = find_average_length_of_records(length_of_every_ECG)
+    #id = find_id_nearest_to_average_record(length_of_every_ECG, average, 3)
+    #print(id)  # Result 0067
+    #length = find_length_of_record('0067')  # 1057346 value
+    #minimum_length = length
+    #print(minimum_length)
+    read_ECG_data(1057346, TypeOfECGCut.full, 3)
     #open_record('0637', 0, 480501)
     #number_of_ECG_by_each_age_group()
-    read_ECG_data(minimum_length, TypeOfECGCut.full, True)
+    #average = find_average_length_of_records(3)
+    #read_ECG_data(minimum_length, TypeOfECGCut.full, 3)
 
 
     ################################################################################################################
