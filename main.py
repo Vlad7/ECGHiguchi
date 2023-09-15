@@ -251,7 +251,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         BMIS_FOR_IDS_OF_BOTH_HFD_VALUES = {}
         LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES = {}
 
-        minute_points_from_ECG_start = 60000 * minutes_passed
+        minutes_points_from_ECG_start = 60000 * minutes_passed
 
         with open(path+'/'+ csv_info_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -278,7 +278,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                         record = None
 
                         """Check, if ECG length > 1 min. Check this method"""
-                        if (length < minute_points_from_ECG_start and length < standart_length):
+                        if (length <= minutes_points_from_ECG_start and length < standart_length):
                             line_count += 1
                             continue
 
@@ -288,19 +288,19 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                         if (cut_method == TypeOfECGCut.full):
 
-                            record = open_record(row[0], minute_points_from_ECG_start, None)
+                            record = open_record(row[0], minutes_points_from_ECG_start, None)
 
                         if (cut_method == TypeOfECGCut.start):
-                            record = open_record(row[0], minute_points_from_ECG_start, standart_length)
+                            record = open_record(row[0], minutes_points_from_ECG_start, standart_length)
 
                         if (cut_method == TypeOfECGCut.end):
 
                             delta = 0
 
-                            if ((length - standart_length) >= minute_points_from_ECG_start):
+                            if ((length - standart_length) >= minutes_points_from_ECG_start):
                                 pass
                             else:
-                                delta = length - standart_length - minute_points_from_ECG_start
+                                delta = length - standart_length - minutes_points_from_ECG_start
 
                             record = open_record(row[0], length - standart_length - delta, None)
 
@@ -308,13 +308,13 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                             # Test this case for reliable situation.
                             # If left_length and right length is different cut windows is translated left on 1 point than right
-                            left_length = (length - minute_points_from_ECG_start  - standart_length) // 2
+                            left_length = (length - minutes_points_from_ECG_start  - standart_length) // 2
 
                             if (left_length >= 0):
 
-                                record = open_record(row[0], minute_points_from_ECG_start + left_length, minute_points_from_ECG_start + left_length + standart_length)
+                                record = open_record(row[0], minutes_points_from_ECG_start + left_length, minutes_points_from_ECG_start + left_length + standart_length)
                             else:
-                                record = open_record(row[0], minute_points_from_ECG_start, standart_length)
+                                record = open_record(row[0], minutes_points_from_ECG_start, standart_length)
 
 
                         if not isinstance(record, list):
@@ -327,6 +327,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                         #if(row[0]<'0162'):
 
                         #old_ecg_dictionary[row[0]] = ecg
+
 
                         result = calculate_higuchi(record[0], record[1])
 
@@ -748,6 +749,8 @@ if __name__ == '__main__':
     #number_of_ECG_by_each_age_group()
     #average = find_average_length_of_records(3)
     #read_ECG_data(minimum_length, TypeOfECGCut.full, 3)
+    h = calculate_higuchi([1])
+    print(h)
 
 
     ################################################################################################################

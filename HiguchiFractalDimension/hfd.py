@@ -40,7 +40,7 @@ def curve_length(X,opt=True,num_k=50,k_max=None):
     k_arr = interval_t(N,num_val=num_k,kmax=k_max)
 
     ### The average length
-    Lk = np.empty(k_arr.size,dtype=np.float)
+    Lk = np.empty(k_arr.size,dtype=float)
 
     ### C library
     if opt:
