@@ -278,7 +278,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                         record = None
 
                         """Check, if ECG length > 1 min. Check this method"""
-                        if (length <= minutes_points_from_ECG_start and length < standart_length):
+                        if (length < standart_length):
                             line_count += 1
                             continue
 
@@ -286,14 +286,14 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                         ### Warning !!! For ECG length more than 1 min
 
-                        if (cut_method == TypeOfECGCut.full):
+                        if (cut_method == TypeOfECGCut.full and length > (minutes_points_from_ECG_start + 5)):
 
                             record = open_record(row[0], minutes_points_from_ECG_start, None)
 
-                        if (cut_method == TypeOfECGCut.start):
+                        if (cut_method == TypeOfECGCut.start and (minutes_points_from_ECG_start + 5) < standart_length):
                             record = open_record(row[0], minutes_points_from_ECG_start, standart_length)
 
-                        if (cut_method == TypeOfECGCut.end):
+                        if (cut_method == TypeOfECGCut.end and (minutes_points_from_ECG_start + 5) < length):
 
                             delta = 0
 
@@ -459,7 +459,7 @@ def open_record(id, min_point, max_point):
     except:
         return math.nan
 
-    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
     #display(record.__dict__)
 
 
@@ -477,7 +477,7 @@ def open_record(id, min_point, max_point):
         # Use second ECG
         sequence_2.append(x[1])
 
-    print("Length with one minute: " + str(len(sequence_1)))
+    print("Initial length of first ECG: " + str(len(sequence_1)))
     #print(sequence)
 
     return [sequence_1, sequence_2]
@@ -598,8 +598,8 @@ def find_maximum_length_of_records():
             else:
                 # Check if id and age_group is not NaN
                 if (not (row[1] == 'NaN')):
-
                     length = find_length_of_record(row[0])
+
 
                     if(not (math.isnan(length))):
                         if(length > max_length):
@@ -741,16 +741,32 @@ if __name__ == '__main__':
     #average = find_average_length_of_records(length_of_every_ECG)
     #id = find_id_nearest_to_average_record(length_of_every_ECG, average, 3)
     #print(id)  # Result 0067
-    #length = find_length_of_record('0067')  # 1057346 value
+    #length = find_length_of_record('0067')  # 1057346 value   17,622433 мин
     #minimum_length = length
     #print(minimum_length)
-    read_ECG_data(1057346, TypeOfECGCut.full, 3)
+
+    #ln = find_length_of_record('0006')# '920744'
+    #print(ln)
+    #record = open_record('0006', 920743, None)
+
+    ln = find_length_of_record('0125')# '920744'
+    print(ln)
+    record = open_record('0125', 902033, None)
+
+    if (record != 'Nan'):
+        print(record)
+
+    hfd = calculate_higuchi(record[0],record[1])
+    print(hfd)
+
+    #read_ECG_data(1057346, TypeOfECGCut.full, 3)
     #open_record('0637', 0, 480501)
     #number_of_ECG_by_each_age_group()
     #average = find_average_length_of_records(3)
     #read_ECG_data(minimum_length, TypeOfECGCut.full, 3)
-    h = calculate_higuchi([1])
-    print(h)
+    #h = calculate_higuchi([1, 2],[2, 3])
+    #print(h)
+
 
 
     ################################################################################################################

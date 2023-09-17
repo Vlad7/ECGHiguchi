@@ -100,13 +100,14 @@ def lin_fit_hfd(k,L,log=True):
 
     k - interval "times", window sizes
     L - curve length
-    log (=True) - k and L values will be transformed to np.log2(k) and np.log2(L),
+    log (=True) - k and L values will be transformed to np.log2(k)    and np.log2(L),
                   respectively
 
     Output:
 
     HFD
     """
+
     if log:
         return (-np.polyfit(np.log2(k),np.log2(L),deg=1)[0]);
     else:
@@ -144,10 +145,12 @@ def interval_t(size,num_val=50,kmax=None):
     #print(np.longdouble(math.log2(np.longdouble(k_stop))))
     k = np.logspace(start=np.log2(2),stop=np.log2(k_stop), endpoint=True, base=2,num=num_val,dtype=int)
 
+
     ####################################################################
     # WARNING !!!
     ####################################################################
     k[len(k) - 1] = k_stop
+
 
     #k1 = np.around(k, decimals=14)
     #print(k1)
