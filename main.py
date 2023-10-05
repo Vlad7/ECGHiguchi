@@ -54,6 +54,20 @@ csv_info_file = 'subject-info.csv'
 minimum_length_of_ECG = 480501
 
 
+##############################################################################################
+################################## Parameters for ECG cutting ################################
+##############################################################################################
+
+# Total minutes that should to wait after activity before ECG mading
+total_minutes_points_from_ECG_start = 5
+
+# Expected minutes waited before ECG mading from selected database
+expected_minutes_points_that_ECG_waited = 2
+
+##############################################################################################
+##############################################################################################
+##############################################################################################
+
 # ECG_dictionary with information about ECG
 
 
@@ -611,27 +625,95 @@ def find_maximum_length_of_records():
 
     return max_length
 
+
+
+
+def find_length_of_record_ECG(id):
+
+    """Open each ECG file. If it not opens return NaN.
+    Maybe make local database to not open file every time... """
+
+    try:
+        record = wfdb.rdrecord(
+            path + '/' + id, 0, None, [0, 1])
+    except:
+
+        return math.nan
+
+    def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
+
+        """For the case when two ECG.
+            Input parameters:
+            num_k_value - number of k values
+            k_max_value - value of Kmax"""
+
+        """
+        dictionary_HFD_ECG_1 = {}
+        dictionary_HFD_ECG_2 = {}
+
+        dictionary_ages = {}
+        """
+
+        ECG_count_per_age_group_dictionary = {}
+
+        Higuchi_average_per_age_group_dictionary = {}
+
+        HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1), opt=True, num_k=num_k_value, k_max=k_max_value)
+        HFD_2 = HiguchiFractalDimension.hfd(np.array(ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
+
+        """
+        if (not math.isnan(HFD_1)):
+            dictionary_HFD_ECG_1[ecg.Id] = HFD_1
+
+        if (not math.isnan(HFD_2)):
+            dictionary_HFD_ECG_2[ecg.Id] = HFD_2"""
+
+        if ((not math.isnan(HFD_1)) and (not math.isnan(HFD_2))):
+            return [HFD_1, HFD_2]
+        else:
+            return None
+
+        
+
+
+    return len(record.p_signal)
+
+
+
 def find_length_of_every_ECG():
+
+
 
     length_of_every_ECG = {}
 
     with open(path + '/' + csv_info_file) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
+
         line_count = 0
 
         for row in csv_reader:
             if line_count == 0:
                 line_count += 1
             else:
-                # Check if age_group is not NaN // Maybe for id too
+
+                # Check if age_group is not NaN         // Maybe make additionally for id too
+
                 if (not (row[1] == 'NaN')):
 
-                    length = find_length_of_record(row[0])
+                    length = find_length_of_record_ECG(row[0])
+
+                    print("id:" + str(row[0]) + "  Length: "+str(length))
 
                     if(not (math.isnan(length))):
                         length_of_every_ECG[row[0]] = length
 
     return length_of_every_ECG
+
+
+
+
+
+
 
 
 def find_average_length_of_records(length_of_every_ECG):
@@ -675,15 +757,7 @@ def find_id_nearest_to_average_record(length_of_every_ECG, average, passed_minut
 
 
 
-def find_length_of_record(id):
-    try:
-        record = wfdb.rdrecord(
-            path + '/' + id, 0, None, [0, 1])
-    except:
-        return math.nan
 
-
-    return len(record.p_signal)
 
 
 
@@ -696,6 +770,8 @@ def print_hi(name):
 
 
 if __name__ == '__main__':
+
+    should_additionally_cat_minutes_points = total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited
 
     #myarray = np.fromfile("D:/Projects/ECGHiguchi/mit-bih-arrhythmia-database-1.0.0/101.dat", dtype=float)
 
@@ -733,12 +809,25 @@ if __name__ == '__main__':
     #print(find_maximum_length_of_records())                 # Result: maximum length of ECG on dataset 2168200 points
 
 
-
+    print(find_length_of_record_ECG('0400'))
     #minimum_length = find_minimum_length_of_records()
     minimum_length = 480501
 
+    #find_length_of_every_ECG()
+
+
+
+
+
+    # Get dictionary with length of every ECG for each Id
+
+
     #length_of_every_ECG = find_length_of_every_ECG()
+
+
     #average = find_average_length_of_records(length_of_every_ECG)
+
+
     #id = find_id_nearest_to_average_record(length_of_every_ECG, average, 3)
     #print(id)  # Result 0067
     #length = find_length_of_record('0067')  # 1057346 value   17,622433 мин
@@ -747,7 +836,8 @@ if __name__ == '__main__':
 
     #ln = find_length_of_record('0006')# '920744'
     #print(ln)
-    #record = open_record('0006', 920743, None)
+    #read_ECG_data(minimum_length, TypeOfECGCut.full, 1)
+    """record = open_record('0006', 920743, None)
 
     ln = find_length_of_record('0125')# '920744'
     print(ln)
@@ -758,7 +848,7 @@ if __name__ == '__main__':
 
     hfd = calculate_higuchi(record[0],record[1])
     print(hfd)
-
+"""
     #read_ECG_data(1057346, TypeOfECGCut.full, 3)
     #open_record('0637', 0, 480501)
     #number_of_ECG_by_each_age_group()
