@@ -474,6 +474,7 @@ def open_record(id, min_point, max_point):
         return math.nan
 
     wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+
     #display(record.__dict__)
 
 
@@ -496,6 +497,24 @@ def open_record(id, min_point, max_point):
 
     return [sequence_1, sequence_2]
 
+"""
+def convert_record_psignal_to_sequences(p_signal):
+
+    tuple = []
+    sequence_1 = []
+    sequence_2 = []
+
+    for x in p_signal:
+
+        for i in len(x):
+
+            tuple[]
+        # Use first ECG
+        sequence_1.append(x[0])
+
+        # Use second ECG
+        sequence_2.append(x[1])
+"""
 
 def update_id_of_records(old_ecg_dictionary):
     """"""
@@ -581,7 +600,9 @@ def find_minimum_length_of_records():
                 # Check if id and age_group is not NaN
                 if (row[0] != 'NaN' and row[1] != 'NaN'):
 
-                    length = find_length_of_record(row[0])
+
+                    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    length = find_length_of_ECGs_in_record(row[0])
 
                     if(not (math.isnan(length))):
                         if(length < min_length):
@@ -612,7 +633,7 @@ def find_maximum_length_of_records():
             else:
                 # Check if id and age_group is not NaN
                 if (not (row[1] == 'NaN')):
-                    length = find_length_of_record(row[0])
+                    length = find_length_of_record(row[0])[1]
 
 
                     if(not (math.isnan(length))):
@@ -626,65 +647,57 @@ def find_maximum_length_of_records():
     return max_length
 
 
+########################################################################################################################
+####################################### CALCULATE ALL LENGTH OF ACCEPTABLE ECGS ########################################
+########################################################################################################################
 
+def find_length_of_ECGs_in_record(id):
 
-def find_length_of_record_ECG(id):
+    """Open each ECG file. If it not opens return None.
 
-    """Open each ECG file. If it not opens return NaN.
     Maybe make local database to not open file every time... """
 
     try:
         record = wfdb.rdrecord(
             path + '/' + id, 0, None, [0, 1])
     except:
+        return None
 
-        return math.nan
+    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
 
-    def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
+    import wfdb.plot.plot as pl
 
-        """For the case when two ECG.
-            Input parameters:
-            num_k_value - number of k values
-            k_max_value - value of Kmax"""
+    # May be error if not p_signal
 
-        """
-        dictionary_HFD_ECG_1 = {}
-        dictionary_HFD_ECG_2 = {}
+    channels = pl._expand_channels(record.p_signal)
 
-        dictionary_ages = {}
-        """
+    ####################################################################################################################
+    ################################ Make another method to check jumps on ECG signal ##################################
+    ####################################################################################################################
 
-        ECG_count_per_age_group_dictionary = {}
+    if (check_if_ECG_has_omissions(channels[0], channels[1]) == True):
+        return None
 
-        Higuchi_average_per_age_group_dictionary = {}
-
-        HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1), opt=True, num_k=num_k_value, k_max=k_max_value)
-        HFD_2 = HiguchiFractalDimension.hfd(np.array(ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
-
-        """
-        if (not math.isnan(HFD_1)):
-            dictionary_HFD_ECG_1[ecg.Id] = HFD_1
-
-        if (not math.isnan(HFD_2)):
-            dictionary_HFD_ECG_2[ecg.Id] = HFD_2"""
-
-        if ((not math.isnan(HFD_1)) and (not math.isnan(HFD_2))):
-            return [HFD_1, HFD_2]
-        else:
-            return None
-
-        
-
+    ####################################################################################################################
+    ####################################################################################################################
+    ####################################################################################################################
 
     return len(record.p_signal)
 
+def check_if_ECG_has_omissions(ECG_1, ECG_2):
 
+    """Step (omissions) detection
+    For the case when two ECG. Maybe create another method for detecting omissions. If at least one ommision found return"""
 
-def find_length_of_every_ECG():
+    for i in range(0, len(ECG_1)):
+        if (math.isnan(ECG_1[i]) or math.isnan(ECG_2[i])):
+            print("Channel 1: " + str(ECG_1[i]) + ";  Channel 2: " + str(ECG_2[i]) + ";  Index: " + str(i))
 
+            return True
 
+def find_length_of_all_ECGs():
 
-    length_of_every_ECG = {}
+    length_of_all_ECGs = {}
 
     with open(path + '/' + csv_info_file) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -698,67 +711,91 @@ def find_length_of_every_ECG():
 
                 # Check if age_group is not NaN         // Maybe make additionally for id too
 
-                if (not (row[1] == 'NaN')):
+                if ((not (row[0] == 'NaN')) and (not (row[1] == 'NaN'))):
 
-                    length = find_length_of_record_ECG(row[0])
+                    length = find_length_of_ECGs_in_record(row[0])
 
-                    print("id:" + str(row[0]) + "  Length: "+str(length))
+                    if(length != None):
+                        length_of_all_ECGs[row[0]] = length
+                        print("id:" + str(row[0]) + "  Length: " + str(length))
 
-                    if(not (math.isnan(length))):
-                        length_of_every_ECG[row[0]] = length
+    with open('length_of_all_ECGs.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-    return length_of_every_ECG
+        spamwriter.writerow(['Id', 'Length'])
+        for key in length_of_all_ECGs.keys():
+            spamwriter.writerow([key, length_of_all_ECGs[key]])
+
+    return length_of_all_ECGs
 
 
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
 
-
-
-
-
-
-def find_average_length_of_records(length_of_every_ECG):
+def find_average_length_of_records():
     """Find average length of ECG records among all dataset"""
-
-    length_of_every_ECG
 
     summ = 0
     count = 0
 
-    for key in length_of_every_ECG.keys():
+    with open('length_of_all_ECGs.csv') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=';')
 
-        summ += length_of_every_ECG[key]
-        count += 1
+        line_count = 0
+
+        for row in csv_reader:
+            if line_count == 0:
+                line_count += 1
+            else:
+
+                # Check if age_group is not NaN         // Maybe make additionally for id too
+
+                if (not (row[0] == 'NaN')):
+
+                    summ += int(row[1])
+                    count += 1
 
     average = summ / count
 
     return average
 
 
-def find_id_nearest_to_average_record(length_of_every_ECG, average, passed_minutes):
+def find_id_nearest_to_average_record(average, passed_minutes):
 
-        """Check method correctness!"""
+        """Check method correctness!
+            Have we to add passed_minutes to average value?"""
+
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         average += passed_minutes
 
         distance = math.inf
         id = 0
 
-        for key in length_of_every_ECG.keys():
-            value = length_of_every_ECG[key]
-            new_distance = value - average
+        with open('length_of_all_ECGs.csv') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=';')
 
-            new_distance_abs = math.fabs(new_distance)
+            line_count = 0
 
-            if new_distance_abs < distance and new_distance <= 0:    # Last condition for rounding to lower value of ECG length sample nearest to average + minutes value
-                distance = new_distance_abs
-                id = key
+            for row in csv_reader:
+                if line_count == 0:
+                    line_count += 1
+                else:
+                    if (not (row[0] == 'NaN')):
+
+                        value = int(row[1])
+                        new_distance = value - average
+
+                        new_distance_abs = math.fabs(new_distance)
+
+                        #
+                        if new_distance_abs < distance and new_distance <= 0:  # Last condition for rounding to lower value of ECG length sample nearest to average + minutes value
+                            distance = new_distance_abs
+                            id = row[0]
 
         return id
-
-
-
-
-
 
 
 
@@ -808,12 +845,36 @@ if __name__ == '__main__':
     #print(find_minimum_length_of_records())                # Result: minimum length of ECG on dataset 480501 points
     #print(find_maximum_length_of_records())                 # Result: maximum length of ECG on dataset 2168200 points
 
+    #open_record('0092',0, None)
 
-    print(find_length_of_record_ECG('0400'))
+
+
+
+
+
+    ################################## Find length of all ECGs and save to CSV file ###################################
+
+    #find_length_of_all_ECGs()
+
+    ######################################## Find average length of records ###########################################
+
+    average = find_average_length_of_records()
+    print(average)
+
+    ###################################################################################################################
+
+    id = find_id_nearest_to_average_record(average, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
+    print(id)
+
+    ###################################################################################################################
+
+    print(find_length_of_ECGs_in_record(id))  # Result 1057346
+
+    #print(find_length_of_record_ECG('0400'))
     #minimum_length = find_minimum_length_of_records()
     minimum_length = 480501
 
-    #find_length_of_every_ECG()
+
 
 
 
@@ -825,7 +886,7 @@ if __name__ == '__main__':
     #length_of_every_ECG = find_length_of_every_ECG()
 
 
-    #average = find_average_length_of_records(length_of_every_ECG)
+    #
 
 
     #id = find_id_nearest_to_average_record(length_of_every_ECG, average, 3)
