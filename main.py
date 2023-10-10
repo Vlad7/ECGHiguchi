@@ -259,7 +259,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
         ECG_COUNT_PER_EACH_AGE_GROUP = {}
         HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP = {}
-        AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES = {}
+        AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES = {}   # ???
 
         SEXES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
         BMIS_FOR_IDS_OF_BOTH_HFD_VALUES = {}
@@ -279,35 +279,38 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                 else:
                     # Check if id and age_group is not NaN
 
-                    if(row[0]>'0100'):
-                        continue
+                    #if(row[0]>'0100'):
+                        #continue
 
                     if (row[0] != 'NaN' and row[1] != 'NaN'):
                         print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
 
-                        length = find_length_of_record(row[0])
+                        length = find_length_of_ECGs_in_record(row[0])
 
                         print("Points in ECG: " + str(length))
 
                         record = None
 
                         """Check, if ECG length > 1 min. Check this method"""
-                        if (length < standart_length):
+                        """if ():
                             line_count += 1
-                            continue
+                            continue"""
 
                         ### Select method of cut of ECG ###
 
                         ### Warning !!! For ECG length more than 1 min
 
+                        # Возможно вынести minutes-pints_from_ECG-start
+                        
+
                         if (cut_method == TypeOfECGCut.full and length > (minutes_points_from_ECG_start + 5)):
 
                             record = open_record(row[0], minutes_points_from_ECG_start, None)
 
-                        if (cut_method == TypeOfECGCut.start and (minutes_points_from_ECG_start + 5) < standart_length):
+                        if (cut_method == TypeOfECGCut.start and ((minutes_points_from_ECG_start + 5)) < standart_length and (length >= standart_length)):
                             record = open_record(row[0], minutes_points_from_ECG_start, standart_length)
 
-                        if (cut_method == TypeOfECGCut.end and (minutes_points_from_ECG_start + 5) < length):
+                        if (cut_method == TypeOfECGCut.end and ((minutes_points_from_ECG_start + 5)) < standart_length and (length >= standart_length)):
 
                             delta = 0
 
@@ -318,7 +321,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                             record = open_record(row[0], length - standart_length - delta, None)
 
-                        if (cut_method == TypeOfECGCut.middle):
+                        if (cut_method == TypeOfECGCut.middle and (length >= standart_length)):
 
                             # Test this case for reliable situation.
                             # If left_length and right length is different cut windows is translated left on 1 point than right
@@ -604,7 +607,7 @@ def find_minimum_length_of_records():
                     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     length = find_length_of_ECGs_in_record(row[0])
 
-                    if(not (math.isnan(length))):
+                    if(length != None):
                         if(length < min_length):
                             min_length = length
                             id = line_count
@@ -632,11 +635,11 @@ def find_maximum_length_of_records():
                 line_count += 1
             else:
                 # Check if id and age_group is not NaN
-                if (not (row[1] == 'NaN')):
+                if (row[0] != 'NaN' and row[1] != 'NaN'):
                     length = find_length_of_record(row[0])[1]
 
 
-                    if(not (math.isnan(length))):
+                    if(length != None):
                         if(length > max_length):
                             max_length = length
 
@@ -858,20 +861,26 @@ if __name__ == '__main__':
 
     ######################################## Find average length of records ###########################################
 
-    average = find_average_length_of_records()
-    print(average)
+    #average = find_average_length_of_records()
+    #print(average)
 
     ###################################################################################################################
 
-    id = find_id_nearest_to_average_record(average, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
-    print(id)
+    #id = find_id_nearest_to_average_record(average, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
+    #print(id)
 
     ###################################################################################################################
 
-    print(find_length_of_ECGs_in_record(id))  # Result 1057346
+    #print(find_length_of_ECGs_in_record(id))  # Result 1057346
+
+    ###################################################################################################################
+
+    read_ECG_data(1057346, TypeOfECGCut.full, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
+
+
 
     #print(find_length_of_record_ECG('0400'))
-    #minimum_length = find_minimum_length_of_records()
+    minimum_length = find_minimum_length_of_records()
     minimum_length = 480501
 
 
