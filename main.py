@@ -59,7 +59,7 @@ minimum_length_of_ECG = 480501
 ##############################################################################################
 
 # Total minutes that should to wait after activity before ECG mading
-total_minutes_points_from_ECG_start = 5
+total_minutes_points_from_ECG_start = 9
 
 # Expected minutes waited before ECG mading from selected database
 expected_minutes_points_that_ECG_waited = 2
@@ -267,6 +267,27 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
         minutes_points_from_ECG_start = 60000 * minutes_passed
 
+
+        ############################################## OPTIMIZE !!! ###################################################
+        selected_records = []
+
+        with open('length_of_all_ECGs.csv') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=';')
+
+            line_count = 0
+
+            for row in csv_reader:
+                if line_count == 0:
+                    line_count += 1
+                else:
+                    if (not (row[0] == 'NaN')):
+
+                        selected_records.append(row[0])
+
+        ###############################################################################################################
+
+
+
         with open(path+'/'+ csv_info_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
 
@@ -279,10 +300,11 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                 else:
                     # Check if id and age_group is not NaN
 
-                    #if(row[0]>'0100'):
-                        #continue
+                    if(row[0]>'0100'):
+                        continue
 
-                    if (row[0] != 'NaN' and row[1] != 'NaN'):
+                    #if (row[0] != 'NaN' and row[1] !=
+                    if (row[0] in selected_records):
                         print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
 
                         length = find_length_of_ECGs_in_record(row[0])
@@ -300,12 +322,22 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                         ### Warning !!! For ECG length more than 1 min
 
+
+
+
+
                         # Возможно вынести minutes-pints_from_ECG-start
-                        
 
                         if (cut_method == TypeOfECGCut.full and length > (minutes_points_from_ECG_start + 5)):
 
                             record = open_record(row[0], minutes_points_from_ECG_start, None)
+
+
+
+
+
+
+
 
                         if (cut_method == TypeOfECGCut.start and ((minutes_points_from_ECG_start + 5)) < standart_length and (length >= standart_length)):
                             record = open_record(row[0], minutes_points_from_ECG_start, standart_length)
@@ -377,7 +409,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         #RECORD.DATABASE[cut_method] = old_ecg_dictionary
 
         print(HFD_OF_ECG_1_AND_2)
-        write_HFD_calculated_values_to_csv(HFD_OF_ECG_1_AND_2, AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES, AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES, cut_method, SEXES_FOR_IDS_OF_BOTH_HFD_VALUES,BMIS_FOR_IDS_OF_BOTH_HFD_VALUES,LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES)
+        write_HFD_calculated_values_to_csv(HFD_OF_ECG_1_AND_2, AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES, AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES, cut_method, SEXES_FOR_IDS_OF_BOTH_HFD_VALUES,BMIS_FOR_IDS_OF_BOTH_HFD_VALUES,LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES, minutes_passed)
 
 
 
@@ -428,10 +460,10 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         #RECORD.print_database()
 
 
-def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, ):
+def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, minutes_passed):
     # ECG 1 and 2 simulationusly
 
-    with open('HFD_calculated_after_one_minute_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
+    with open('HFD_calculated_after_minutes_' + str(total_minutes_points_from_ECG_start) + "_" + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
@@ -476,7 +508,7 @@ def open_record(id, min_point, max_point):
     except:
         return math.nan
 
-    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
 
     #display(record.__dict__)
 
@@ -811,7 +843,7 @@ def print_hi(name):
 
 if __name__ == '__main__':
 
-    should_additionally_cat_minutes_points = total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited
+
 
     #myarray = np.fromfile("D:/Projects/ECGHiguchi/mit-bih-arrhythmia-database-1.0.0/101.dat", dtype=float)
 
@@ -855,6 +887,10 @@ if __name__ == '__main__':
 
 
 
+
+
+    should_additionally_cat_minutes_points = total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited
+
     ################################## Find length of all ECGs and save to CSV file ###################################
 
     #find_length_of_all_ECGs()
@@ -864,24 +900,24 @@ if __name__ == '__main__':
     #average = find_average_length_of_records()
     #print(average)
 
-    ###################################################################################################################
+    ######################### Знайти індекс запису ЕКГ, по довжині найближчої до середньої #############################
 
     #id = find_id_nearest_to_average_record(average, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
     #print(id)
 
-    ###################################################################################################################
+    ################################### Довжина ЕКГ в записі з заданим індексом ########################################
 
     #print(find_length_of_ECGs_in_record(id))  # Result 1057346
 
     ###################################################################################################################
 
-    read_ECG_data(1057346, TypeOfECGCut.full, total_minutes_points_from_ECG_start - expected_minutes_points_that_ECG_waited)
+    read_ECG_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points)
 
 
 
     #print(find_length_of_record_ECG('0400'))
-    minimum_length = find_minimum_length_of_records()
-    minimum_length = 480501
+    #minimum_length = find_minimum_length_of_records()
+    #minimum_length = 480501
 
 
 
