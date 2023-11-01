@@ -411,7 +411,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         print(HFD_OF_ECG_1_AND_2)
         write_HFD_calculated_values_to_csv(HFD_OF_ECG_1_AND_2, AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES, AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES, cut_method, SEXES_FOR_IDS_OF_BOTH_HFD_VALUES,BMIS_FOR_IDS_OF_BOTH_HFD_VALUES,LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES, minutes_passed)
 
-        ###
+        
 
         ##########################################################################################################
         ##########################################################################################################
