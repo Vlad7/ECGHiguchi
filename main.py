@@ -42,6 +42,7 @@ import numpy as np
 import wfdb
 import HiguchiFractalDimension.hfd
 import csv
+import matplotlib.pyplot as plt
 
 #######################################################################################################################
 
@@ -381,6 +382,9 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                         result = calculate_higuchi(record[0], record[1])
 
 
+
+
+
                         #For the case, when HFD_1 and HFD_2 simulationusly
 
                         if result != None:
@@ -508,7 +512,9 @@ def open_record(id, min_point, max_point):
     except:
         return math.nan
 
-    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+
+
+
 
     #display(record.__dict__)
 
@@ -529,6 +535,24 @@ def open_record(id, min_point, max_point):
 
     print("Initial length of first ECG: " + str(len(sequence_1)))
     #print(sequence)
+
+    ########################## VISUALIZE DISTRIBUTION OF CURVE LENGTH ############################
+
+    k, L = HiguchiFractalDimension.curve_length(sequence_1, opt=True, num_k=50, k_max=None)  # 49 points not 50
+
+    plt.plot(np.log2(k), np.log2(L), 'bo')
+    plt.show()
+
+    k, L = HiguchiFractalDimension.curve_length(sequence_2, opt=True, num_k=50,
+                                                k_max=None)  # 49 points not 50
+
+    plt.plot(np.log2(k), np.log2(L), 'bo')
+    plt.show()
+
+    ###############################################################################################
+
+    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+
 
     return [sequence_1, sequence_2]
 
