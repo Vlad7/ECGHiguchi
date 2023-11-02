@@ -43,6 +43,7 @@ import wfdb
 import HiguchiFractalDimension.hfd
 import csv
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 
 #######################################################################################################################
 
@@ -536,6 +537,8 @@ def open_record(id, min_point, max_point):
     print("Initial length of first ECG: " + str(len(sequence_1)))
     #print(sequence)
 
+
+
     ########################## VISUALIZE DISTRIBUTION OF CURVE LENGTH ############################
 
     k, L = HiguchiFractalDimension.curve_length(sequence_1, opt=True, num_k=50, k_max=None)  # 49 points not 50
@@ -550,6 +553,9 @@ def open_record(id, min_point, max_point):
     plt.show()
 
     ###############################################################################################
+
+
+
 
     wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
 
