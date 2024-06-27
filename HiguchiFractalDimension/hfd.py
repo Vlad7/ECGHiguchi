@@ -126,6 +126,7 @@ def hfd(X,**kwargs):
     HFD
     """
     k, L = curve_length(X,**kwargs)
+
     return lin_fit_hfd(k, L);
 
 def interval_t(size,num_val=50,kmax=None):

@@ -42,15 +42,27 @@ import numpy as np
 import wfdb
 import HiguchiFractalDimension.hfd
 import csv
+import matplotlib.pyplot as plt
+
+
+
 
 #######################################################################################################################
 
 # Path to dataset of ECG
+# For future make loading from web database
 path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
+
+
+
+
+
+
+
 minimum_length_of_ECG = 480501
 
 
@@ -298,11 +310,23 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                     print(f'Column names are {", ".join(row)} ')
                     line_count += 1
                 else:
+
+
+
+
+
+
+
+
+
+
+                    """
+                    
                     # Check if id and age_group is not NaN
 
                     if(row[0]>'0100'):
                         continue
-
+                    """
                     #if (row[0] != 'NaN' and row[1] !=
                     if (row[0] in selected_records):
                         print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
@@ -380,6 +404,18 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                         result = calculate_higuchi(record[0], record[1])
 
+
+                        ### Plot k and L ##############################################################################
+
+                        k, L = HiguchiFractalDimension.curve_length(np.array(record[0]), opt=True, num_k=50,
+                                                                    k_max=None)
+
+
+                        plt.plot(np.log2(k), np.log2(L), 'ro')
+                        plt.ylabel('some numbers')
+                        plt.show()
+
+                        ###############################################################################################
 
                         #For the case, when HFD_1 and HFD_2 simulationusly
 
