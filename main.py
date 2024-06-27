@@ -9,10 +9,11 @@ import pandas as pd
 import openpyxl
 import enum
 
-gender = {'0': 'male', '1': 'female'}
-device = {'0': 'TFM, CNSystems', '1': 'CNAP 500, CNSystems; MP150, BIOPAC Systems'}
+gender = {'NaN': 'none', '0': 'male', '1': 'female'}
+device = {'NaN': 'none', '0': 'TFM, CNSystems', '1': 'CNAP 500, CNSystems; MP150, BIOPAC Systems'}
 
-age_groups = {'1': '18 - 19',
+age_groups = {'NaN': 'none',
+              '1': '18 - 19',
                   '2': '20 - 24',
                   '3': '25 - 29',
                   '4': '30 - 34',
@@ -307,29 +308,22 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
             for row in csv_reader:
                 if line_count == 0:
-                    print(f'Column names are {", ".join(row)} ')
+                    print(f'Column names are: {", ".join(row)} ')
                     line_count += 1
+
                 else:
-
-
-
-
-
-
-
-
-
-
-                    """
+                    print(f'\tId: {row[0]:>6};    Age_group: {age_groups[row[1]]:>9};    Sex: {gender[row[2]]:>6};    BMI: {row[3]:>6};    Length: {row[4]:>5};    Device: {device[row[5]]}.')
+                    line_count += 1
+        """     
                     
                     # Check if id and age_group is not NaN
 
                     if(row[0]>'0100'):
                         continue
-                    """
+                    
                     #if (row[0] != 'NaN' and row[1] !=
                     if (row[0] in selected_records):
-                        print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
+                        ###################################print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
 
                         length = find_length_of_ECGs_in_record(row[0])
 
@@ -337,10 +331,10 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
 
                         record = None
 
-                        """Check, if ECG length > 1 min. Check this method"""
-                        """if ():
+                        Check, if ECG length > 1 min. Check this method
+                        if ():
                             line_count += 1
-                            continue"""
+                            continue
 
                         ### Select method of cut of ECG ###
 
@@ -438,7 +432,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
                             break
 
 
-                    line_count += 1
+                    #############################################line_count += 1
 
 
 
@@ -491,9 +485,10 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         print(HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP)
         #print(dictionary_HFD_ECG_1)
         #print(dictionary_HFD_ECG_2)
-        #print(dictionary_HFD_ECG_1_2)"""
+        #print(dictionary_HFD_ECG_1_2)
 
         #RECORD.print_database()
+        """
 
 
 def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, minutes_passed):
