@@ -14,6 +14,8 @@ import wfdb
 import HiguchiFractalDimension.hfd
 import csv
 import matplotlib.pyplot as plt
+import os.path
+
 
 gender = {'NaN': 'none', '0': 'male', '1': 'female'}
 device = {'NaN': 'none', '0': 'TFM, CNSystems', '1': 'CNAP 500, CNSystems; MP150, BIOPAC Systems'}
@@ -73,6 +75,7 @@ expected_minutes_points_that_ECG_waited = 2
 ##############################################################################################
 
 DATABASE_ATTRIBUTES = []
+DATABASE = {}
 
 def print_database_attributes():
     print(f'Column names are: {", ".join(DATABASE_ATTRIBUTES)} ')
@@ -113,7 +116,7 @@ class RECORD:
         #wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
 # ECG_dictionary with information about ECG
 
-DATABASE = {}
+
 
 def print_database():
     for id in DATABASE.keys():
@@ -281,9 +284,9 @@ def localize_floats(row):
 
 
 #######################################################################################################################
+############################################## OPENING RECORDS ########################################################
 #######################################################################################################################
-#######################################################################################################################
-def read_ECG_annotation_data():
+def read_ECGs_annotation_data():
 
         """ Open csv info file, print header and information for each record. Then fill ECG DATABASE. """
 
@@ -293,6 +296,7 @@ def read_ECG_annotation_data():
             # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
             first_row = next(csv_reader)
 
+            # Setting counter for first row
             line_count = 0
 
             for col in first_row:
@@ -303,22 +307,27 @@ def read_ECG_annotation_data():
 
                 line_count += 1
 
-                if (line_count < 0):
+                # Take only one ecg
+                #if (line_count > 1):
+                #    return
+
+                # If Id is not available
+                if (row[0] == 'NaN'):
                     continue
-                if (line_count > 1):
-                    return
 
-                # If id is not available if (not (row[0] == 'NaN')):
 
-                # If id and age category are available
-
+                # If age category is available
                 if (not (row[1] == 'NaN')):
+                    # Open record returns ecg_1 and ecg_2
                     ecg_s = open_record(row[0], 0, None)
-                    record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
 
+                    # Calling constructor for RECORD and automatically saving to DATABASE
+                    record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
+                else:
+                    continue
 
                 #if (not (row[0] == 'NaN')):
-                #    selected_records.append(row[0])
+                #   selected_records.append(row[0])
 
 
 
@@ -327,22 +336,51 @@ def read_ECG_annotation_data():
 
 def open_record(id, min_point, max_point):
 
-    """ Open each record with ECG by Id
+    """ Open each record with ECGs by Id
 
         Input parameters:
             - Id - id of record
             - min_point - minimum point, at which starts ECG (including this point)
-            - max_point - maximum point, at which ends ECG (not including this point)"""
+            - max_point - maximum point, at which ends ECG (not including this point)
 
-    # wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
-    # 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
-    # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
+        Output parameters:
+            - [sequence_1, sequence_2] - list with sequence_1 for first ECG and sequence_2 for second ECG
 
+            Describing:
+                wfdb.rdrecord(path + '/' + id, min_point, max_point, [0, 1])
+
+                min_point = 0 - The starting sample number to read for all channels
+                                (point from what graphic starts (min_point)).
+
+                max_point = None - The sample number at which to stop reading for all
+                channels (max_point). Reads the entire duration by default.
+
+                [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG.
+            """
+
+
+
+    record = None
     try:
+        if min_point < 0:
+            print("Too low minimal point of ECG! Now minimal point is 0!")
+            min_point = 0
+
         record = wfdb.rdrecord(
             path + '/' + id, min_point, max_point, [0, 1])
-    except:
-        return math.nan
+    except :
+        if os.path.isfile(path + '/' + id+'.hea') or os.path.isfile(path + '/' + id+'.dat'):
+            max_point = None
+            print("Too hight maximal point of ECG! Now maximal point is None!")
+
+    if record is None:
+
+        try:
+            record = wfdb.rdrecord(
+                path + '/' + id, min_point, max_point, [0, 1])
+        except:
+            print("File with record doesn't open!")
+            return None
 
     wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
 
@@ -368,6 +406,10 @@ def open_record(id, min_point, max_point):
     #print(sequence)
 
     return [sequence_1, sequence_2]
+
+#####################################################################################################################
+#####################################################################################################################
+#####################################################################################################################
 
 def save_to_csv(id, sequences, filename):
     """Save ECG sequences to CSV format with time and ecg values"""
@@ -1015,7 +1057,7 @@ if __name__ == '__main__':
     ###################################################################################################################
 
     #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
-    read_ECG_annotation_data()
+    read_ECGs_annotation_data()
 
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
