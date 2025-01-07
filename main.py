@@ -46,6 +46,17 @@ class TypeOfECGCut(enum.Enum):
     end = 4
 
 
+<<<<<<< HEAD
+=======
+from IPython.display import display
+import numpy as np
+import wfdb
+import HiguchiFractalDimension.hfd
+import csv
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+
+>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 #######################################################################################################################
 
 # Path to dataset of ECG
@@ -552,6 +563,7 @@ def save_to_csv(id, sequences, filename):
                         result = calculate_higuchi(record[0], record[1])
 
 
+<<<<<<< HEAD
                         ### Plot k and L ##############################################################################
 
                         k, L = HiguchiFractalDimension.curve_length(np.array(record[0]), opt=True, num_k=50,
@@ -563,6 +575,10 @@ def save_to_csv(id, sequences, filename):
                         plt.show()
 
                         ###############################################################################################
+=======
+
+
+>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 
                         #For the case, when HFD_1 and HFD_2 simulationusly
 
@@ -673,10 +689,78 @@ def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_gro
         for key in higuchi_average_per_each_age_group.keys():
             spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key][0]),
                                      localize_floats(higuchi_average_per_each_age_group[key][1])])
+<<<<<<< HEAD
+=======
+def open_record(id, min_point, max_point):
+
+    """ Open each record with ECG by Id
+
+        Input parapeters:
+            - Id - id of record
+            - min_point - minimum point, at which starts ECG (including this point)
+            - max_point - maximum point, at which ends ECG (not including this point)"""
+
+    # wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
+    # 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
+    # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
+
+    try:
+        record = wfdb.rdrecord(
+            path + '/' + id, min_point, max_point, [0, 1])
+    except:
+        return math.nan
 
 
 
 
+
+    #display(record.__dict__)
+>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
+
+
+
+
+<<<<<<< HEAD
+=======
+    # print(record.p_signal)
+
+    for x in record.p_signal:
+
+        # Use first ECG
+        sequence_1.append(x[0])
+
+        # Use second ECG
+        sequence_2.append(x[1])
+
+    print("Initial length of first ECG: " + str(len(sequence_1)))
+    #print(sequence)
+
+
+
+    ########################## VISUALIZE DISTRIBUTION OF CURVE LENGTH ############################
+
+    k, L = HiguchiFractalDimension.curve_length(sequence_1, opt=True, num_k=50, k_max=None)  # 49 points not 50
+
+    plt.plot(np.log2(k), np.log2(L), 'bo')
+    plt.show()
+
+    k, L = HiguchiFractalDimension.curve_length(sequence_2, opt=True, num_k=50,
+                                                k_max=None)  # 49 points not 50
+
+    plt.plot(np.log2(k), np.log2(L), 'bo')
+    plt.show()
+
+    ###############################################################################################
+
+
+
+
+    wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
+
+
+    return [sequence_1, sequence_2]
+
+>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 """
 def convert_record_psignal_to_sequences(p_signal):
 
