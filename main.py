@@ -8,6 +8,12 @@ import math
 import pandas as pd
 import openpyxl
 import enum
+from IPython.display import display
+import numpy as np
+import wfdb
+import HiguchiFractalDimension.hfd
+import csv
+import matplotlib.pyplot as plt
 
 gender = {'NaN': 'none', '0': 'male', '1': 'female'}
 device = {'NaN': 'none', '0': 'TFM, CNSystems', '1': 'CNAP 500, CNSystems; MP150, BIOPAC Systems'}
@@ -38,16 +44,6 @@ class TypeOfECGCut(enum.Enum):
     end = 4
 
 
-from IPython.display import display
-import numpy as np
-import wfdb
-import HiguchiFractalDimension.hfd
-import csv
-import matplotlib.pyplot as plt
-
-
-
-
 #######################################################################################################################
 
 # Path to dataset of ECG
@@ -59,11 +55,6 @@ csv_info_file = 'subject-info.csv'
 #######################################################################################################################
 
 
-
-
-
-
-
 minimum_length_of_ECG = 480501
 
 
@@ -72,7 +63,7 @@ minimum_length_of_ECG = 480501
 ##############################################################################################
 
 # Total minutes that should to wait after activity before ECG mading
-total_minutes_points_from_ECG_start = 9
+total_minutes_points_from_ECG_start = 5
 
 # Expected minutes waited before ECG mading from selected database
 expected_minutes_points_that_ECG_waited = 2
@@ -81,7 +72,10 @@ expected_minutes_points_that_ECG_waited = 2
 ##############################################################################################
 ##############################################################################################
 
-# ECG_dictionary with information about ECG
+DATABASE_ATTRIBUTES = []
+
+def print_database_attributes():
+    print(f'Column names are: {", ".join(DATABASE_ATTRIBUTES)} ')
 
 
 class RECORD:
@@ -89,8 +83,6 @@ class RECORD:
     """ Record class that represents necessary information about ECG database """
 
     # Database with filtered ages
-
-    DATABASE = {}
 
     def __init__(self, id, age_group, sex, bmi, length, device, ecg_1, ecg_2):
 
@@ -105,16 +97,42 @@ class RECORD:
         self.ECG_1 = ecg_1
         self.ECG_2 = ecg_2
 
+        DATABASE[id] = self
+
+
     def __str__(self):
 
-        return str(f'\tId: {self.Id}; Age_group: {self.AgeGroup}; Sex: {self.Sex}; BMI: {self.BMI}; Length: {self.Length}; Device: {self.Device}.')
+        self.plot()
+        return str(f'\tId: {self.Id:>6};    Age_group: {age_groups[self.AgeGroup]:>9};    Sex: {gender[self.Sex]:>6};    BMI: {self.BMI:>6};    Length: {self.Length:>5};    Device: {device[self.Device]}.')
 
-    def print_database():
-        for en in RECORD.DATABASE.keys():
-            for x in RECORD.DATABASE[en]:
-                print(RECORD.DATABASE[en][x])
-                print(RECORD.DATABASE[en][x].ECG_1)
-                print(RECORD.DATABASE[en][x].ECG_2)
+    def plot(self):
+
+        plt.plot(self.ECG_1)
+        plt.ylabel("mV")
+        plt.show()
+        #wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+# ECG_dictionary with information about ECG
+
+DATABASE = {}
+
+def print_database():
+    for id in DATABASE.keys():
+       print(DATABASE[id])
+
+
+
+#######################################################################################################################
+#######################################################################################################################
+#######################################################################################################################
+
+
+
+
+
+
+
+
+
 
 
 
@@ -261,12 +279,126 @@ with open('number_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
 def localize_floats(row):
     return str(row).replace('.', ',') if isinstance(row, float) else row
 
-def read_ECG_data(standart_length, cut_method, minutes_passed):
 
-        """ Open csv info file, print header and information for each record. Then fill ECG_dictionary with keys without
-         passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD
+#######################################################################################################################
+#######################################################################################################################
+#######################################################################################################################
+def read_ECG_annotation_data():
 
-         Check if minutes_passed < standart_length"""
+        """ Open csv info file, print header and information for each record. Then fill ECG DATABASE. """
+
+        with open(path+'/'+ csv_info_file) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+
+            # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
+            first_row = next(csv_reader)
+
+            line_count = 0
+
+            for col in first_row:
+                DATABASE_ATTRIBUTES.append(col)
+
+            # Обрабатываем оставшиеся строки
+            for row in csv_reader:
+
+                line_count += 1
+
+                if (line_count < 0):
+                    continue
+                if (line_count > 1):
+                    return
+
+                # If id is not available if (not (row[0] == 'NaN')):
+
+                # If id and age category are available
+
+                if (not (row[1] == 'NaN')):
+                    ecg_s = open_record(row[0], 0, None)
+                    record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
+
+
+                #if (not (row[0] == 'NaN')):
+                #    selected_records.append(row[0])
+
+
+
+
+                    
+
+def open_record(id, min_point, max_point):
+
+    """ Open each record with ECG by Id
+
+        Input parameters:
+            - Id - id of record
+            - min_point - minimum point, at which starts ECG (including this point)
+            - max_point - maximum point, at which ends ECG (not including this point)"""
+
+    # wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
+    # 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
+    # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
+
+    try:
+        record = wfdb.rdrecord(
+            path + '/' + id, min_point, max_point, [0, 1])
+    except:
+        return math.nan
+
+    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+
+    #display(record.__dict__)
+
+
+    sequence_1 = []
+    sequence_2 = []
+
+
+    # print(record.p_signal)
+
+    for x in record.p_signal:
+
+        # Use first ECG
+        sequence_1.append(x[0])
+
+        # Use second ECG
+        sequence_2.append(x[1])
+
+    print("Length of first ECG with id {0}: {1}".format(id, str(len(sequence_1))))
+    print("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
+    #print(sequence)
+
+    return [sequence_1, sequence_2]
+
+def save_to_csv(id, sequences, filename):
+    """Save ECG sequences to CSV format with time and ecg values"""
+    sequence_1, sequence_2 = sequences
+    start_time = 0
+    sampling_rate = 1000  # Assuming the sampling rate is 1000 Hz, adjust if different
+
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["time", "ecg"])
+
+        for i, value in enumerate(sequence_1):
+            time = start_time + i / sampling_rate
+            writer.writerow([time, value])
+
+    print(f"ECG data saved to {filename}")
+
+
+    
+######################################################################################################################
+######################################################################################################################
+######################################################################################################################
+
+"""
+
+        # parameters: standart_length, cut_method, minutes_passed, count
+
+        with keys without
+            passes and with two ECG data. Records without age range are not added in dictionary. ECG data may be with passes, so it must be checked by HFD
+
+            Check if minutes_passed < standart_length
 
         HFD_OF_ECG_1_AND_2 = {}
         AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
@@ -284,44 +416,23 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         ############################################## OPTIMIZE !!! ###################################################
         selected_records = []
 
-        with open('length_of_all_ECGs.csv') as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=';')
-
-            line_count = 0
-
-            for row in csv_reader:
-                if line_count == 0:
-                    line_count += 1
-                else:
-                    if (not (row[0] == 'NaN')):
-
-                        selected_records.append(row[0])
+       
 
         ###############################################################################################################
 
 
 
-        with open(path+'/'+ csv_info_file) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+        
 
-            line_count = 0
-
-            for row in csv_reader:
-                if line_count == 0:
-                    print(f'Column names are: {", ".join(row)} ')
-                    line_count += 1
-
-                else:
-                    print(f'\tId: {row[0]:>6};    Age_group: {age_groups[row[1]]:>9};    Sex: {gender[row[2]]:>6};    BMI: {row[3]:>6};    Length: {row[4]:>5};    Device: {device[row[5]]}.')
-                    line_count += 1
-        """     
+        record = open_record('1000', 0, None)
+            
                     
                     # Check if id and age_group is not NaN
 
                     if(row[0]>'0100'):
                         continue
                     
-                    #if (row[0] != 'NaN' and row[1] !=
+                   
                     if (row[0] in selected_records):
                         ###################################print(f'\tId: {row[0]}; Age_group: {age_groups[row[1]]}; Sex: {gender[row[2]]}; BMI: {row[3]}; Length: {row[4]}; Device: {device[row[5]]}.')
 
@@ -488,7 +599,7 @@ def read_ECG_data(standart_length, cut_method, minutes_passed):
         #print(dictionary_HFD_ECG_1_2)
 
         #RECORD.print_database()
-        """
+"""
 
 
 def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, minutes_passed):
@@ -520,48 +631,9 @@ def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_gro
         for key in higuchi_average_per_each_age_group.keys():
             spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key][0]),
                                      localize_floats(higuchi_average_per_each_age_group[key][1])])
-def open_record(id, min_point, max_point):
-
-    """ Open each record with ECG by Id
-
-        Input parapeters:
-            - Id - id of record
-            - min_point - minimum point, at which starts ECG (including this point)
-            - max_point - maximum point, at which ends ECG (not including this point)"""
-
-    # wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
-    # 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
-    # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
-
-    try:
-        record = wfdb.rdrecord(
-            path + '/' + id, min_point, max_point, [0, 1])
-    except:
-        return math.nan
-
-    #wfdb.plot_wfdb(record, title='Record' + id + ' from Physionet Autonomic ECG')
-
-    #display(record.__dict__)
 
 
-    sequence_1 = []
-    sequence_2 = []
 
-
-    # print(record.p_signal)
-
-    for x in record.p_signal:
-
-        # Use first ECG
-        sequence_1.append(x[0])
-
-        # Use second ECG
-        sequence_2.append(x[1])
-
-    print("Initial length of first ECG: " + str(len(sequence_1)))
-    #print(sequence)
-
-    return [sequence_1, sequence_2]
 
 """
 def convert_record_psignal_to_sequences(p_signal):
@@ -942,8 +1014,26 @@ if __name__ == '__main__':
 
     ###################################################################################################################
 
-    read_ECG_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points)
+    #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
+    read_ECG_annotation_data()
 
+    # Example usage
+    path = "/path/to/data"  # Update this path to the location of your data files
+    record_id = "0001"
+    min_point = 0
+    max_point = None
+
+    sequences = [DATABASE['0001'].ECG_1, DATABASE['0001'].ECG_2]
+    if sequences is not math.nan:
+        save_to_csv(record_id, sequences, f"ecg_{record_id}.csv")
+
+
+
+
+    print_database_attributes()
+    print_database()
+    
+    #print[((RECORD)DATABASE[0]).__str__()]
 
 
     #print(find_length_of_record_ECG('0400'))
