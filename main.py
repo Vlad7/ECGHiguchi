@@ -8,7 +8,7 @@ import math
 import pandas as pd
 import openpyxl
 import enum
-from IPython.display import display
+#from IPython.display import display
 import numpy as np
 import wfdb
 import HiguchiFractalDimension.hfd
@@ -46,9 +46,9 @@ class TypeOfECGCut(enum.Enum):
     end = 4
 
 
-<<<<<<< HEAD
-=======
-from IPython.display import display
+#<<<<<<< HEAD
+#=======
+#from IPython.display import display
 import numpy as np
 import wfdb
 import HiguchiFractalDimension.hfd
@@ -56,7 +56,7 @@ import csv
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
->>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
+#>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 #######################################################################################################################
 
 # Path to dataset of ECG
@@ -297,11 +297,19 @@ def localize_floats(row):
 #######################################################################################################################
 ############################################## OPENING RECORDS ########################################################
 #######################################################################################################################
-def read_ECGs_annotation_data():
+def read_ECGs_annotation_data(is_remotely):
 
         """ Open csv info file, print header and information for each record. Then fill ECG DATABASE. """
 
-        with open(path+'/'+ csv_info_file) as csv_file:
+        all_path=""
+
+        # Check, if dataset is remotely locatedS
+        if not is_remotely:
+            all_path=path+'/'+csv_info_file
+        else:
+            all_path=csv_info_file
+
+        with open(all_path) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
 
             # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
@@ -330,7 +338,7 @@ def read_ECGs_annotation_data():
                 # If age category is available
                 if (not (row[1] == 'NaN')):
                     # Open record returns ecg_1 and ecg_2
-                    ecg_s = open_record(row[0], 0, None)
+                    ecg_s = open_records(row[0], 0, None, remotely=is_remotely)
 
                     # Calling constructor for RECORD and automatically saving to DATABASE
                     record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
@@ -345,7 +353,7 @@ def read_ECGs_annotation_data():
 
                     
 
-def open_record(id, min_point, max_point):
+def open_records(id, min_point, max_point, remotely):
 
     """ Open each record with ECGs by Id
 
@@ -377,8 +385,11 @@ def open_record(id, min_point, max_point):
             print("Too low minimal point of ECG! Now minimal point is 0!")
             min_point = 0
 
-        record = wfdb.rdrecord(
-            path + '/' + id, min_point, max_point, [0, 1])
+        if not remotely:
+            record = wfdb.rdrecord(
+                path + '/' + id, min_point, max_point, [0, 1])
+        else:
+            record = wfdb.rdrecord(id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular')
     except :
         if os.path.isfile(path + '/' + id+'.hea') or os.path.isfile(path + '/' + id+'.dat'):
             max_point = None
@@ -387,8 +398,11 @@ def open_record(id, min_point, max_point):
     if record is None:
 
         try:
-            record = wfdb.rdrecord(
-                path + '/' + id, min_point, max_point, [0, 1])
+            if not remotely:
+                record = wfdb.rdrecord(
+                    path + '/' + id, min_point, max_point, [0, 1])
+            else:
+                record = wfdb.rdrecord(id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular')
         except:
             print("File with record doesn't open!")
             return None
@@ -689,8 +703,8 @@ def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_gro
         for key in higuchi_average_per_each_age_group.keys():
             spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key][0]),
                                      localize_floats(higuchi_average_per_each_age_group[key][1])])
-<<<<<<< HEAD
-=======
+#<<<<<<< HEAD
+#=======
 def open_record(id, min_point, max_point):
 
     """ Open each record with ECG by Id
@@ -715,13 +729,13 @@ def open_record(id, min_point, max_point):
 
 
     #display(record.__dict__)
->>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
+#>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 
 
 
 
-<<<<<<< HEAD
-=======
+#Q<<<<<<< HEAD
+#=======
     # print(record.p_signal)
 
     for x in record.p_signal:
@@ -760,7 +774,7 @@ def open_record(id, min_point, max_point):
 
     return [sequence_1, sequence_2]
 
->>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
+#>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 """
 def convert_record_psignal_to_sequences(p_signal):
 
@@ -1141,7 +1155,7 @@ if __name__ == '__main__':
     ###################################################################################################################
 
     #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
-    read_ECGs_annotation_data()
+    read_ECGs_annotation_data(is_remotely=True)
 
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
