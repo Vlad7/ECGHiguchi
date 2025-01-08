@@ -339,7 +339,7 @@ def read_ECGs_annotation_data(is_remotely):
                 if (not (row[1] == 'NaN')):
                     # Open record returns ecg_1 and ecg_2
                     ecg_s = open_records(row[0], 0, None, remotely=is_remotely)
-
+                    print(ecg_s[0])
                     # Calling constructor for RECORD and automatically saving to DATABASE
                     record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
                 else:
@@ -1155,7 +1155,7 @@ if __name__ == '__main__':
     ###################################################################################################################
 
     #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
-    read_ECGs_annotation_data(is_remotely=True)
+    read_ECGs_annotation_data(False)
 
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
