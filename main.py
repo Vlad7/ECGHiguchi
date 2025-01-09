@@ -62,7 +62,7 @@ import scipy.stats as stats
 # Path to dataset of ECG
 # For future make loading from web database
 path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -326,6 +326,8 @@ def read_ECGs_annotation_data(is_remotely):
 
                 line_count += 1
 
+                if (line_count < 296):
+                    continue
                 # Take only one ecg
                 #if (line_count > 1):
                 #    return
@@ -431,8 +433,8 @@ def open_records(id, min_point, max_point, remotely):
     #print(sequence)
 
     test_record_for_breaks(sequence_1, sequence_2)
-    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
-
+    #wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+    n = input()
     return [sequence_1, sequence_2]
 
 #####################################################################################################################
