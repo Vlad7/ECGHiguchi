@@ -62,7 +62,7 @@ import scipy.stats as stats
 # Path to dataset of ECG
 # For future make loading from web database
 path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-
+path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -339,9 +339,10 @@ def read_ECGs_annotation_data(is_remotely):
                 if (not (row[1] == 'NaN')):
                     # Open record returns ecg_1 and ecg_2
                     ecg_s = open_records(row[0], 0, None, remotely=is_remotely)
-                    print(ecg_s[0])
+
                     # Calling constructor for RECORD and automatically saving to DATABASE
                     record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
+                    #test_record_for_breaks(record)
                 else:
                     continue
 
@@ -407,7 +408,6 @@ def open_records(id, min_point, max_point, remotely):
             print("File with record doesn't open!")
             return None
 
-    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
 
     #display(record.__dict__)
 
@@ -430,11 +430,37 @@ def open_records(id, min_point, max_point, remotely):
     print("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
     #print(sequence)
 
+    test_record_for_breaks(sequence_1, sequence_2)
+    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+
     return [sequence_1, sequence_2]
 
 #####################################################################################################################
 #####################################################################################################################
 #####################################################################################################################
+
+def test_record_for_breaks(sequence_1, sequence_2):
+        isbreaks = False
+        for index, point in enumerate(sequence_1):
+            if math.isnan(point):
+                print("Record with first ECG has break at point {0}".format(index))
+                isbreaks = True
+        for index, point in enumerate(sequence_2):
+            if math.isnan(point):
+                print("Record with second ECG has break at point {0}".format(index))
+                isbreaks = True
+
+        print("Breaks are: {0}".format(isbreaks))
+
+def test_records_for_breaks():
+    for key in DATABASE.keys:
+        record = DATABASE[key]
+        for point in record.ECG_1:
+            if point == math.nan:
+                print("Record {0} has break", key)
+        for point in record.ECG_2:
+            if point == math.nan:
+                print("Record {0} has break", key)
 
 def save_to_csv(id, sequences, filename):
     """Save ECG sequences to CSV format with time and ecg values"""
@@ -1156,7 +1182,7 @@ if __name__ == '__main__':
 
     #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
     read_ECGs_annotation_data(False)
-
+    #test_records_for_breaks()
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
     record_id = "0001"
