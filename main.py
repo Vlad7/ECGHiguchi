@@ -303,6 +303,8 @@ def read_ECGs_annotation_data(is_remotely):
 
         all_path=""
 
+        f = open("breaks_new.txt", "a")
+
         # Check, if dataset is remotely locatedS
         if not is_remotely:
             all_path=path+'/'+csv_info_file
@@ -326,7 +328,8 @@ def read_ECGs_annotation_data(is_remotely):
 
                 line_count += 1
 
-                if (line_count < 296):
+                #697
+                if (line_count < 1000):
                     continue
                 # Take only one ecg
                 #if (line_count > 1):
@@ -340,8 +343,10 @@ def read_ECGs_annotation_data(is_remotely):
                 # If age category is available
                 if (not (row[1] == 'NaN')):
                     # Open record returns ecg_1 and ecg_2
-                    ecg_s = open_records(row[0], 0, None, remotely=is_remotely)
+                    ecg_s = open_records(row[0], 0, None, f, remotely=is_remotely)
 
+                    if ecg_s is None:
+                        continue
                     # Calling constructor for RECORD and automatically saving to DATABASE
                     record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
                     #test_record_for_breaks(record)
@@ -353,10 +358,10 @@ def read_ECGs_annotation_data(is_remotely):
 
 
 
-
+        f.close()
                     
 
-def open_records(id, min_point, max_point, remotely):
+def open_records(id, min_point, max_point, f, remotely):
 
     """ Open each record with ECGs by Id
 
@@ -428,13 +433,58 @@ def open_records(id, min_point, max_point, remotely):
         # Use second ECG
         sequence_2.append(x[1])
 
+
     print("Length of first ECG with id {0}: {1}".format(id, str(len(sequence_1))))
     print("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
     #print(sequence)
 
-    test_record_for_breaks(sequence_1, sequence_2)
+    """Create breaks file
+    breaks_1, breaks_2 = test_record_for_breaks(sequence_1, sequence_2)
+
+    consecutive_breaks1 = find_consecutive_breaks(breaks_1)
+    consecutive_breaks2 = find_consecutive_breaks(breaks_2)
+
+    print(consecutive_breaks1)
+    print(consecutive_breaks2)
+
+    if len(consecutive_breaks1) > 0 or len(consecutive_breaks2) > 0:
+        f.write(id)
+        f.write("\n")
+        f.write("\n")
+        f.write("Length of first ECG with id {0}: {1}".format(id, str(len(sequence_1))))
+        f.write("\n")
+        f.write("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
+        f.write("\n")
+        f.write("\n")
+        if(len(breaks_1) > 0):
+            f.write("Breaks with first: {0}".format(True))
+        f.write("\n")
+        if (len(breaks_2) > 0):
+            f.write("Breaks with second: {0}".format(True))
+        f.write("\n")
+        f.write("\n")
+        if (len(consecutive_breaks1) > 0):
+            f.write("Consecutive_breaks 1: ")
+        f.write("\n")
+        f.write("\n")
+        for c_b in consecutive_breaks1:
+            f.write(str(c_b))
+            f.write("\n")
+        f.write("\n")
+        f.write("\n")
+        if (len(consecutive_breaks2) > 0):
+            f.write("Consecutive_breaks 2: ")
+        f.write("\n")
+        f.write("\n")
+        for c_b in consecutive_breaks2:
+            f.write(str(c_b))
+            f.write("\n")
+        f.write("\n")
+        f.write("\n")
+        f.write("\n")
+    """
     #wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
-    n = input()
+    #n = input()
     return [sequence_1, sequence_2]
 
 #####################################################################################################################
@@ -442,17 +492,59 @@ def open_records(id, min_point, max_point, remotely):
 #####################################################################################################################
 
 def test_record_for_breaks(sequence_1, sequence_2):
-        isbreaks = False
-        for index, point in enumerate(sequence_1):
-            if math.isnan(point):
-                print("Record with first ECG has break at point {0}".format(index))
-                isbreaks = True
-        for index, point in enumerate(sequence_2):
-            if math.isnan(point):
-                print("Record with second ECG has break at point {0}".format(index))
-                isbreaks = True
+    """Test record for empty points
+        input:
+            sequence_1: First ECG sequence
+            sequence_2: Second ECG sequence
+    """
 
-        print("Breaks are: {0}".format(isbreaks))
+    breaks1_list = []
+    breaks2_list = []
+
+    for index, point in enumerate(sequence_1):
+        if math.isnan(point):
+            breaks1_list.append(index)
+            #print("Record with first ECG has break at point {0}".format(index))
+
+    for index, point in enumerate(sequence_2):
+        if math.isnan(point):
+            breaks2_list.append(index)
+            #print("Record with second ECG has break at point {0}".format(index))
+
+
+    if(len(breaks1_list) > 0):
+        print("Breaks with first: True")
+    if(len(breaks2_list) > 0):
+        print("Breaks with second: True")
+    return breaks1_list, breaks2_list
+
+def find_consecutive_breaks(points):
+    """
+    Identifies consecutive breaks in a list of points.
+
+    :param points: List of break points (sorted integers).
+    :return: List of tuples representing consecutive ranges.
+    """
+    if not points:
+        return []
+
+    consecutive_ranges = []
+    start = points[0]
+    prev = points[0]
+
+    for point in points[1:]:
+        if point == prev + 1:
+            # Continue the consecutive range
+            prev = point
+        else:
+            # End of a consecutive range
+            consecutive_ranges.append((start, prev))
+            start = point
+            prev = point
+
+    # Append the last range
+    consecutive_ranges.append((start, prev))
+    return consecutive_ranges
 
 def test_records_for_breaks():
     for key in DATABASE.keys:
