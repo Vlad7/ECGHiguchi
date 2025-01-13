@@ -15,6 +15,19 @@ import HiguchiFractalDimension.hfd
 import csv
 import matplotlib.pyplot as plt
 import os.path
+import sys
+import os
+
+# Импортируем функцию bwr
+import bwr
+
+# Добавляем родительскую директорию
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'py-bwr')))
+
+
+
+
+
 
 
 gender = {'NaN': 'none', '0': 'male', '1': 'female'}
@@ -305,6 +318,33 @@ def read_ECGs_annotation_data(is_remotely):
 
         f = open("breaks_new.txt", "a")
 
+        # Id's of breacked first ecg's
+        breaked_first_ecg_ids = []
+        # Id's of breacked second ecg's
+        breaked_second_ecg_ids = []
+
+        with open('breaked_first_ecg.txt', 'r', encoding='utf-8') as file:
+            for str in file:
+                breaked_first_ecg_ids.append(str.strip())       #strip - remove spaces and '\n'
+
+        with open('breaked_second_ecg.txt', 'r', encoding='utf-8') as file:
+            for str in file:
+                breaked_second_ecg_ids.append(str.strip())
+
+        print(breaked_first_ecg_ids)
+        print(breaked_second_ecg_ids)
+
+        #General for two lists
+        general = list(set(breaked_first_ecg_ids) & set(breaked_second_ecg_ids))  # Пересечение множеств
+        general.sort()
+        print(general)
+
+        first_unique = list(set(breaked_first_ecg_ids) - set(general)) # First unique from general
+        second_unique = list(set(breaked_second_ecg_ids) - set(general)) # Second unique from general
+        first_unique.sort()
+        second_unique.sort()
+        print(first_unique)
+        print(second_unique)
         # Check, if dataset is remotely locatedS
         if not is_remotely:
             all_path=path+'/'+csv_info_file
@@ -329,7 +369,7 @@ def read_ECGs_annotation_data(is_remotely):
                 line_count += 1
 
                 #697
-                if (line_count < 1000):
+                if (row[0] in general or row[0] in first_unique):
                     continue
                 # Take only one ecg
                 #if (line_count > 1):
@@ -344,6 +384,21 @@ def read_ECGs_annotation_data(is_remotely):
                 if (not (row[1] == 'NaN')):
                     # Open record returns ecg_1 and ecg_2
                     ecg_s = open_records(row[0], 0, None, f, remotely=is_remotely)
+
+                    # Signal with first ECG
+                    signal = ecg_s[0]
+
+                    # Baseline wander of the signal
+                    baseline = bwr.calc_baseline(signal)
+
+                    # Remove baseline from original signal
+                    ecg_out = signal - baseline
+
+                    plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out)
+
+                    
+
+
 
                     if ecg_s is None:
                         continue
@@ -360,6 +415,72 @@ def read_ECGs_annotation_data(is_remotely):
 
         f.close()
                     
+def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out):
+    """Plot signal, baseline on first plot. Plot output signal without baseline on the second plot.
+
+    :param signal: input ECG signal
+    :param baseline: baseline wander
+    :param ecg_out: ECG signal with baseline wander removal
+    :return:
+    """
+
+
+    """
+    # Generate example signals (replace with your ECG data)
+    fs = 500  # Sampling frequency (Hz)
+    duration = 10  # Signal duration (seconds)
+    t = np.linspace(0, duration, fs * duration)  # Time axis
+    signal1 = np.sin(2 * np.pi * 1 * t)  # First signal
+    signal2 = np.sin(2 * np.pi * 1 * t + np.pi / 4)  # Second signal (phase shifted)
+    """
+
+    # Create the figure and subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
+
+    # Plot the signals
+
+    ax1.plot(signal, "b-", label="signal")
+    ax1.plot(baseline, "r-", label="baseline")
+    ax2.plot(ecg_out, "b-", label="signal - baseline")
+
+    # Set labels and legends
+    ax1.set_title("ECG baseline wander signal")
+    ax1.set_ylabel("Amplitude (mV)")
+    ax1.legend()
+    ax2.set_title("ECG baseline wander removal signal")
+    ax2.set_ylabel("Amplitude (mV)")
+    ax2.set_xlabel("Time (seconds)")
+    ax2.legend()
+
+    # Enable grid
+    ax1.grid()
+    ax2.grid()
+
+    # State flag to prevent recursion
+    synchronizing = False
+
+    # Synchronize zooming by linking the axes
+    def on_xlim_changed(event_ax):
+        global synchronizing
+        if synchronizing:
+            return  # Prevent recursion
+
+        synchronizing = True  # Set the flag to avoid recursion
+
+        # Synchronize x-limits
+        if event_ax == ax1:
+            ax2.set_xlim(ax1.get_xlim())
+        elif event_ax == ax2:
+            ax1.set_xlim(ax2.get_xlim())
+
+        synchronizing = False  # Reset the flag after synchronization
+
+    # Connect the zoom synchronization to x-limits changes
+    ax1.callbacks.connect("xlim_changed", on_xlim_changed)
+    ax2.callbacks.connect("xlim_changed", on_xlim_changed)
+
+    # Show the interactive plot
+    plt.show()
 
 def open_records(id, min_point, max_point, f, remotely):
 
@@ -483,7 +604,7 @@ def open_records(id, min_point, max_point, f, remotely):
         f.write("\n")
         f.write("\n")
     """
-    #wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
     #n = input()
     return [sequence_1, sequence_2]
 
