@@ -18,13 +18,13 @@ import os.path
 import sys
 import os
 
-# Импортируем функцию bwr
-import bwr
+
 
 # Добавляем родительскую директорию
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'py-bwr')))
 
-
+# Импортируем функцию bwr
+import bwr
 
 
 
@@ -74,8 +74,8 @@ import scipy.stats as stats
 
 # Path to dataset of ECG
 # For future make loading from web database
-path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -394,9 +394,21 @@ def read_ECGs_annotation_data(is_remotely):
                     # Remove baseline from original signal
                     ecg_out = signal - baseline
 
-                    plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out)
 
-                    
+                    #Низкочастотный фильтр
+                    # Параметры фильтра
+                    cutoff = 15.0  # Граничная частота (Гц)
+                    fs = 1000.0  # Частота дискретизации (Гц)
+                    order = 4
+
+                    # Исходный сигнал (например, из ваших данных)
+                    # signal = ...
+
+                    # Фильтрация
+                    filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
+
+                    plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
+
 
 
 
@@ -414,8 +426,24 @@ def read_ECGs_annotation_data(is_remotely):
 
 
         f.close()
-                    
-def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out):
+
+
+from scipy.signal import butter, filtfilt
+
+# Низкочастотный фильтр
+def butter_lowpass_filter(data, cutoff, fs, order=4):
+    nyquist = 0.5 * fs
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    y = filtfilt(b, a, data)
+    return y
+
+
+
+
+
+
+def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, low_pass_filtered):
     """Plot signal, baseline on first plot. Plot output signal without baseline on the second plot.
 
     :param signal: input ECG signal
@@ -435,13 +463,22 @@ def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out
     """
 
     # Create the figure and subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 6), sharex=True)
 
     # Plot the signals
 
     ax1.plot(signal, "b-", label="signal")
     ax1.plot(baseline, "r-", label="baseline")
     ax2.plot(ecg_out, "b-", label="signal - baseline")
+    ax3.plot(low_pass_filtered, label="Фильтрованный сигнал", linewidth=2)
+    # Визуализация
+
+    #plt.plot(time, signal, label="Исходный сигнал", alpha=0.6)
+
+
+
+
+
 
     # Set labels and legends
     ax1.set_title("ECG baseline wander signal")
@@ -449,19 +486,23 @@ def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out
     ax1.legend()
     ax2.set_title("ECG baseline wander removal signal")
     ax2.set_ylabel("Amplitude (mV)")
-    ax2.set_xlabel("Time (seconds)")
     ax2.legend()
 
+    ax3.set_xlabel("Time (seconds)")
+    ax3.set_ylabel("Амплитуда")
+    ax3.set_title("Удаление шума низкочастотным фильтром")
+    ax3.legend()
     # Enable grid
     ax1.grid()
     ax2.grid()
+    ax3.grid()
 
     # State flag to prevent recursion
     synchronizing = False
 
     # Synchronize zooming by linking the axes
     def on_xlim_changed(event_ax):
-        global synchronizing
+        nonlocal synchronizing
         if synchronizing:
             return  # Prevent recursion
 
@@ -470,15 +511,20 @@ def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out
         # Synchronize x-limits
         if event_ax == ax1:
             ax2.set_xlim(ax1.get_xlim())
+            ax3.set_xlim(ax1.get_xlim())
         elif event_ax == ax2:
             ax1.set_xlim(ax2.get_xlim())
+            ax3.set_xlim(ax2.get_xlim())
+        elif event_ax == ax3:
+            ax1.set_xlim(ax3.get_xlim())
+            ax2.set_xlim(ax3.get_xlim())
 
         synchronizing = False  # Reset the flag after synchronization
 
     # Connect the zoom synchronization to x-limits changes
     ax1.callbacks.connect("xlim_changed", on_xlim_changed)
     ax2.callbacks.connect("xlim_changed", on_xlim_changed)
-
+    ax3.callbacks.connect("xlim_changed", on_xlim_changed)
     # Show the interactive plot
     plt.show()
 
