@@ -19,11 +19,17 @@ import sys
 import os
 
 # Импортируем функцию bwr
-import bwr
+
 
 # Добавляем родительскую директорию
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'py-bwr')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'pan_tompkins')))
 
+
+
+import bwr
+import nbimporter
+import pan_tompkins
 
 
 
@@ -368,8 +374,11 @@ def read_ECGs_annotation_data(is_remotely):
 
                 line_count += 1
 
-                #697
+                # Union of general and firs_unique (breaked first ECG)
                 if (row[0] in general or row[0] in first_unique):
+                    continue
+
+                if (line_count > 100):
                     continue
                 # Take only one ecg
                 #if (line_count > 1):
@@ -396,9 +405,14 @@ def read_ECGs_annotation_data(is_remotely):
 
                     plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out)
 
-                    
+                    QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
+                    ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
+                    output_signal = QRS_detector.solve(ecg)
 
 
+
+                    plot_tompkins(pan_tompkins.bpass, pan_tompkins.der, pan_tompkins.sqr, pan_tompkins.mwin)
+                    calculate_heart_rate(ecg)
 
                     if ecg_s is None:
                         continue
@@ -414,7 +428,77 @@ def read_ECGs_annotation_data(is_remotely):
 
 
         f.close()
-                    
+
+
+def calculate_heart_rate(ecg):
+    # Convert ecg signal to numpy array
+    signal = ecg.iloc[:,1].to_numpy()
+
+    # Find the R peak locations
+    hr = pan_tompkins.heart_rate(signal,pan_tompkins.fs)
+    result = hr.find_r_peaks()
+    result = np.array(result)
+
+    # Clip the x locations less than 0 (Learning Phase)
+    result = result[result > 0]
+
+    # Calculate the heart rate
+    heartRate = (60*pan_tompkins.fs)/np.average(np.diff(result[1:]))
+    print("Heart Rate",heartRate, "BPM")
+
+    # Plotting the R peak locations in ECG signal
+    plt.figure(figsize = (20,4), dpi = 100)
+    plt.xticks(np.arange(0, len(signal)+1, 150))
+    plt.plot(signal, color = 'blue')
+    plt.scatter(result, signal[result], color = 'red', s = 50, marker= '*')
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("R Peak Locations")
+
+    #!!!!!!!!!!!!!!!!!!!!!!!!!
+    print(np.diff(result[1:]))
+    print(signal[result])
+
+
+def plot_tompkins(bpass, der, sqr, mwin):
+
+    # Plotting bandpassed signal
+    plt.figure(figsize = (20,4), dpi = 100)
+    plt.xticks(np.arange(0, len(bpass)+1, 150))
+    plt.plot(bpass[32:len(bpass)-2])
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("Bandpassed Signal")
+
+    # Plotting derived signal
+    plt.figure(figsize = (20,4), dpi = 100)
+    plt.xticks(np.arange(0, len(der)+1, 150))
+    plt.plot(der[32:len(der)-2])
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("Derivative Signal")
+
+    # Plotting squared signal
+    plt.figure(figsize = (20,4), dpi = 100)
+    plt.xticks(np.arange(0, len(sqr)+1, 150))
+    plt.plot(sqr[32:len(sqr)-2])
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("Squared Signal")
+
+    # Plotting moving window integrated signal
+    plt.figure(figsize = (20,4), dpi = 100)
+    plt.xticks(np.arange(0, len(mwin)+1, 150))
+    plt.plot(mwin[100:len(mwin)-2])
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("Moving Window Integrated Signal")
+
+
+
+
+
+
 def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out):
     """Plot signal, baseline on first plot. Plot output signal without baseline on the second plot.
 
@@ -461,7 +545,7 @@ def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out
 
     # Synchronize zooming by linking the axes
     def on_xlim_changed(event_ax):
-        global synchronizing
+        nonlocal synchronizing
         if synchronizing:
             return  # Prevent recursion
 
