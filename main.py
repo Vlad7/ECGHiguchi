@@ -18,10 +18,10 @@ import os.path
 import sys
 import os
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 # Импортируем функцию bwr
-=======
->>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+#=======
+#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
 
 
 # Добавляем родительскую директорию
@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'p
 import bwr
 
 import bwr
-import nbimporter
+#import nbimporter
 import pan_tompkins
 
 
@@ -408,11 +408,11 @@ def read_ECGs_annotation_data(is_remotely):
                     ecg_out = signal - baseline
 
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
                     QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
                     ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
                     output_signal = QRS_detector.solve(ecg)
-=======
+#=======
                     #Низкочастотный фильтр
                     # Параметры фильтра
                     cutoff = 15.0  # Граничная частота (Гц)
@@ -427,7 +427,7 @@ def read_ECGs_annotation_data(is_remotely):
 
                     plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
 
->>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
 
 
 
@@ -450,7 +450,7 @@ def read_ECGs_annotation_data(is_remotely):
         f.close()
 
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 def calculate_heart_rate(ecg):
     # Convert ecg signal to numpy array
     signal = ecg.iloc[:,1].to_numpy()
@@ -477,7 +477,9 @@ def calculate_heart_rate(ecg):
     plt.title("R Peak Locations")
 
     #!!!!!!!!!!!!!!!!!!!!!!!!!
-    print(np.diff(result[1:]))
+    res = np.diff(result[1:])
+    for r in res:
+        print(r)
     print(signal[result])
 
 
@@ -514,7 +516,7 @@ def plot_tompkins(bpass, der, sqr, mwin):
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Moving Window Integrated Signal")
-=======
+#=======
 from scipy.signal import butter, filtfilt
 
 # Низкочастотный фильтр
@@ -524,18 +526,16 @@ def butter_lowpass_filter(data, cutoff, fs, order=4):
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     y = filtfilt(b, a, data)
     return y
->>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
 
 
 
 
 
 
-<<<<<<< HEAD
-def plot_simulationusly_baseline_wander_and_without_it(signal, baseline, ecg_out):
-=======
+
 def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, low_pass_filtered):
->>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
     """Plot signal, baseline on first plot. Plot output signal without baseline on the second plot.
 
     :param signal: input ECG signal
