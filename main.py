@@ -35,7 +35,7 @@ import bwr
 #import nbimporter
 import pan_tompkins
 
-
+import neurokit2 as nk
 
 
 
@@ -84,8 +84,8 @@ import scipy.stats as stats
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -401,17 +401,87 @@ def read_ECGs_annotation_data(is_remotely):
                     # Signal with first ECG
                     signal = ecg_s[0]
 
+                    sampling_rate = 1000
+
+                    ###################################################################################################
+                    #################################### TO RR - intervals ############################################
+
+                    # Предобработка
+                    ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
+
+                    # Детекция R-зубцов
+                    r_peaks, _ = nk.ecg_peaks(ecg_cleaned, sampling_rate=sampling_rate)
+
+                    #Получаем индексы R - зубцов
+                    peaks = _["ECG_R_Peaks"].astype(int)
+
+                    # Проверяем, что индексы находятся в пределах сигнала
+                    if np.any(peaks >= len(signal)) or np.any(peaks < 0):
+                        raise ValueError("Некоторые индексы R-зубцов выходят за пределы сигнала.")
+
+                    print("Тип peaks:", type(peaks))
+
+
+                    # Преобразуем индексы в временные метки (в секундах)
+                    #r_timestamps = np.array(peaks) / sampling_rate
+
+                    # Вычисляем R-R интервалы (в милисекундах)
+                    rr_intervals = np.diff(peaks)
+
+                    # Вывод R-R интервалов
+                    print("R-R интервалы (в секундах):", rr_intervals)
+
+                    # Дополнительно: сохранение в файл
+                    #np.savetxt("rr_intervals_{0}.txt".format(row[0]), rr_intervals, header="RR Intervals (s)", comments='', fmt="%.6f")
+
+
+                    # Plotting bandpassed signal
+                    plt.figure(figsize=(20, 4), dpi=100)
+                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 50))
+                    plt.plot(ecg_cleaned)
+                    plt.xlabel('Samples')
+                    plt.ylabel('MLIImV')
+                    plt.title("Cleaned signal")
+
+
+
+
+
+                    # Расчет R-R интервалов
+                    #rr_intervals = nk.ecg_interval(r_peaks, sampling_rate=sampling_rate)
+
+                    # Сохранение результата
+                    #rr_intervals.to_csv("rr_intervals.csv", index=False)
+
+
+                    # Plotting the R peak locations in ECG signal
+                    plt.figure(figsize=(20, 4), dpi=100)
+                    plt.xticks(np.arange(0, len(signal) + 1, 50))
+                    plt.plot(ecg_cleaned, color='blue')
+                    for p in peaks:
+                        plt.scatter(p, ecg_cleaned[p], color='red', s=50, marker='*')
+                    plt.xlabel('Samples')
+                    plt.ylabel('MLIImV')
+                    plt.title("R Peak Locations")
+                    
+
+
+
+                    # Сохранение результата
+                    #rr_intervals.to_csv("rr_intervals.csv", index=False)
+
+
                     # Baseline wander of the signal
-                    baseline = bwr.calc_baseline(signal)
+                    #baseline = bwr.calc_baseline(signal)
 
                     # Remove baseline from original signal
-                    ecg_out = signal - baseline
+                    #ecg_out = (signal - baseline)
 
 
 #<<<<<<< HEAD
-                    QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
-                    ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
-                    output_signal = QRS_detector.solve(ecg)
+                    #QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
+                    #ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
+                    #output_signal = QRS_detector.solve(ecg)
 #=======
                     #Низкочастотный фильтр
                     # Параметры фильтра
@@ -423,21 +493,21 @@ def read_ECGs_annotation_data(is_remotely):
                     # signal = ...
 
                     # Фильтрация
-                    filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
+                    #filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
 
-                    plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
+                    #plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
 
 #>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
 
 
 
-                    plot_tompkins(pan_tompkins.bpass, pan_tompkins.der, pan_tompkins.sqr, pan_tompkins.mwin)
-                    calculate_heart_rate(ecg)
+                    #plot_tompkins(pan_tompkins.bpass, pan_tompkins.der, pan_tompkins.sqr, pan_tompkins.mwin)
+                    #calculate_heart_rate(ecg)
 
                     if ecg_s is None:
                         continue
                     # Calling constructor for RECORD and automatically saving to DATABASE
-                    record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
+                    #record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
                     #test_record_for_breaks(record)
                 else:
                     continue
@@ -458,6 +528,8 @@ def calculate_heart_rate(ecg):
     # Find the R peak locations
     hr = pan_tompkins.heart_rate(signal,pan_tompkins.fs)
     result = hr.find_r_peaks()
+    for r in result:
+        print(r)
     result = np.array(result)
 
     # Clip the x locations less than 0 (Learning Phase)
@@ -477,9 +549,9 @@ def calculate_heart_rate(ecg):
     plt.title("R Peak Locations")
 
     #!!!!!!!!!!!!!!!!!!!!!!!!!
-    res = np.diff(result[1:])
-    for r in res:
-        print(r)
+    #res = np.diff(result[1:])
+    #for r in res:
+    #    print(r)
     print(signal[result])
 
 

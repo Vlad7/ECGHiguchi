@@ -252,7 +252,7 @@ plt.ylabel('MLIImV')
 plt.title("Moving Window Integrated Signal")
 """
 # Importing Libraries
-from scipy import signal as sg
+#from scipy import signal as sg
 
 
 class heart_rate():
