@@ -78,14 +78,15 @@ import HiguchiFractalDimension.hfd
 import csv
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-
+from biosppy import storage
+from biosppy.signals import ecg
 #>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 #######################################################################################################################
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -382,7 +383,7 @@ def read_ECGs_annotation_data(is_remotely):
                 if (row[0] in general or row[0] in first_unique):
                     continue
 
-                if (line_count < 8 or line_count > 100):
+                if (line_count < 23 or line_count > 100):
                     continue
                 # Take only one ecg
                 #if (line_count > 1):
@@ -403,9 +404,45 @@ def read_ECGs_annotation_data(is_remotely):
 
                     sampling_rate = 1000
 
+                    #################################### BIO SPPY #####################################################
+                    # load raw ECG signal
+                    #signal, mdata = storage.load_txt('./examples/ecg.txt')
+
+                    extended_signal = np.pad(signal, (300, 300), mode='edge')  # Добавление 100 отсчетов
+                    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=False)
+                    r_peaks = out['rpeaks']  # Корректировка индексов R-пиков
+
+                    # Дополнительно: сохранение в файл
+                    np.savetxt("rr_intervals/peaks_{0}.txt".format(row[0]), r_peaks,
+                               header="Peaks (s)", comments='', fmt="%.6f")
+                    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=True)
+                    # process it and plot
+                    #out = ecg.ecg(signal=signal, sampling_rate=sampling_rate, show=True)
+
+                    # Дополнительно: сохранение в файл
+
+                    # Получение R-пиков
+                    #r_peaks = out['rpeaks']
+                    # Вычисляем R-R интервалы (в милисекундах)
+                    rr_intervals = np.diff(r_peaks)
+
+                    """
+                    # Plotting the R peak locations in ECG signal
+                    plt.figure(figsize=(20, 4), dpi=100)
+                    plt.xticks(np.arange(0, len(signal) + 1, 150))
+                    plt.plot(signal, color='blue')
+                    for p in r_peaks:
+                        plt.scatter(p, signal[p], color='red', s=50, marker='*')
+                    plt.xlabel('Samples')
+                    plt.ylabel('MLIImV')
+                    plt.title("R Peak Locations")
+                    """
+                    np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(row[0]), rr_intervals,
+                               header="RR Intervals (s)", comments='', fmt="%.6f")
+
                     ###################################################################################################
                     #################################### TO RR - intervals ############################################
-
+                    """
                     # Предобработка
                     ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
 
@@ -421,10 +458,13 @@ def read_ECGs_annotation_data(is_remotely):
 
                     print("Тип peaks:", type(peaks))
 
+                    # Дополнительно: сохранение в файл
+                    np.savetxt("rr_intervals/peaks_{0}.txt".format(row[0]), peaks,
+                               header="Peaks (s)", comments='', fmt="%.6f")
 
                     # Преобразуем индексы в временные метки (в секундах)
                     #r_timestamps = np.array(peaks) / sampling_rate
-
+                    print("Peaks in milliseconds: ",peaks)
                     # Вычисляем R-R интервалы (в милисекундах)
                     rr_intervals = np.diff(peaks)
 
@@ -437,7 +477,7 @@ def read_ECGs_annotation_data(is_remotely):
 
                     # Plotting bandpassed signal
                     plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 1))
+                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 150))
                     plt.plot(ecg_cleaned)
                     plt.xlabel('Samples')
                     plt.ylabel('MLIImV')
@@ -456,7 +496,7 @@ def read_ECGs_annotation_data(is_remotely):
 
                     # Plotting the R peak locations in ECG signal
                     plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(signal) + 1, 50))
+                    plt.xticks(np.arange(0, len(signal) + 1, 150))
                     plt.plot(signal, color='blue')
                     for p in peaks:
                         plt.scatter(p, signal[p], color='red', s=50, marker='*')
@@ -465,7 +505,7 @@ def read_ECGs_annotation_data(is_remotely):
                     plt.title("R Peak Locations")
                     
 
-
+                    """
 
                     # Сохранение результата
                     #rr_intervals.to_csv("rr_intervals.csv", index=False)
