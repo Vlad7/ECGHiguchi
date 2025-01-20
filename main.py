@@ -84,8 +84,8 @@ import scipy.stats as stats
 
 # Path to dataset of ECG
 # For future make loading from web database
-path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -382,7 +382,7 @@ def read_ECGs_annotation_data(is_remotely):
                 if (row[0] in general or row[0] in first_unique):
                     continue
 
-                if (line_count > 100):
+                if (line_count < 8 or line_count > 100):
                     continue
                 # Take only one ecg
                 #if (line_count > 1):
@@ -429,15 +429,15 @@ def read_ECGs_annotation_data(is_remotely):
                     rr_intervals = np.diff(peaks)
 
                     # Вывод R-R интервалов
-                    print("R-R интервалы (в секундах):", rr_intervals)
+                    print("R-R интервалы (в милисекундах):", rr_intervals)
 
                     # Дополнительно: сохранение в файл
-                    #np.savetxt("rr_intervals_{0}.txt".format(row[0]), rr_intervals, header="RR Intervals (s)", comments='', fmt="%.6f")
+                    np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(row[0]), rr_intervals, header="RR Intervals (s)", comments='', fmt="%.6f")
 
 
                     # Plotting bandpassed signal
                     plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 50))
+                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 1))
                     plt.plot(ecg_cleaned)
                     plt.xlabel('Samples')
                     plt.ylabel('MLIImV')
@@ -457,9 +457,9 @@ def read_ECGs_annotation_data(is_remotely):
                     # Plotting the R peak locations in ECG signal
                     plt.figure(figsize=(20, 4), dpi=100)
                     plt.xticks(np.arange(0, len(signal) + 1, 50))
-                    plt.plot(ecg_cleaned, color='blue')
+                    plt.plot(signal, color='blue')
                     for p in peaks:
-                        plt.scatter(p, ecg_cleaned[p], color='red', s=50, marker='*')
+                        plt.scatter(p, signal[p], color='red', s=50, marker='*')
                     plt.xlabel('Samples')
                     plt.ylabel('MLIImV')
                     plt.title("R Peak Locations")
