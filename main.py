@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 #######################################################################################################################
@@ -342,20 +342,20 @@ def read_ECGs_annotation_data(is_remotely):
             for str in file:
                 breaked_second_ecg_ids.append(str.strip())
 
-        print(breaked_first_ecg_ids)
-        print(breaked_second_ecg_ids)
+        print("Breaked_first_ecg_ids: ", breaked_first_ecg_ids)
+        print("Breaked_second_ecg_ids: ", breaked_second_ecg_ids)
 
         #General for two lists
         general = list(set(breaked_first_ecg_ids) & set(breaked_second_ecg_ids))  # Пересечение множеств
         general.sort()
-        print(general)
+        print("General: ", general)
 
         first_unique = list(set(breaked_first_ecg_ids) - set(general)) # First unique from general
         second_unique = list(set(breaked_second_ecg_ids) - set(general)) # Second unique from general
         first_unique.sort()
         second_unique.sort()
-        print(first_unique)
-        print(second_unique)
+        print("First unique: ", first_unique)
+        print("Second unique: ", second_unique)
         # Check, if dataset is remotely locatedS
         if not is_remotely:
             all_path=path+'/'+csv_info_file
@@ -382,7 +382,7 @@ def read_ECGs_annotation_data(is_remotely):
                 # Union of general and firs_unique (breaked first ECG)
                 if (row[0] in general or row[0] in first_unique):
                     continue
-
+                # 780 - 800
                 if (line_count < 780 or line_count > 800):
                     continue
                 # Take only one ecg
