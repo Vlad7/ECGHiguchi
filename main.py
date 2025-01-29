@@ -85,10 +85,11 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
+rr_intervals_folder="rr_intervals/all"
 #######################################################################################################################
 
 
@@ -132,8 +133,8 @@ class RECORD:
         self.BMI = bmi
         self.Length = length
         self.Device = device
-        self.ECG_1 = ecg_1
-        self.ECG_2 = ecg_2
+        #self.ECG_1 = ecg_1
+        #self.ECG_2 = ecg_2
 
         DATABASE[id] = self
 
@@ -175,31 +176,48 @@ def print_database():
 
 
 
-def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
+def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
 
     """For the case when two ECG.
         Input parameters:
         num_k_value - number of k values
         k_max_value - value of Kmax"""
 
-    """
+
     dictionary_HFD_ECG_1 = {}
-    dictionary_HFD_ECG_2 = {}
+    #dictionary_HFD_ECG_2 = {}
     
     dictionary_ages = {}
-    """
+
+
+
+    for key in ECG_1.keys():
+        HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1[key]), opt=True, num_k=num_k_value,
+                                          k_max=k_max_value)
+
+        dictionary_HFD_ECG_1[key] = HFD_1
+
+    print(dictionary_HFD_ECG_1)
+
+    dictionary_ages = extract_ages(ECG_1.keys())
+    print(dictionary_ages)
+
+    dictionary_age_ranges = {}
+
+    for key in dictionary_ages.keys():
+        dictionary_age_ranges[key] = age_groups[dictionary_ages[key]]
+
+    write_HFD_calculated_values_to_csv(dictionary_HFD_ECG_1,dictionary_ages,dictionary_age_ranges)
+
+
+    #ECG_count_per_age_group_dictionary = {}
+
+    #Higuchi_average_per_age_group_dictionary = {}
 
 
 
 
-    ECG_count_per_age_group_dictionary = {}
-
-    Higuchi_average_per_age_group_dictionary = {}
-
-
-
-    HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1), opt=True, num_k=num_k_value, k_max=k_max_value)
-    HFD_2 = HiguchiFractalDimension.hfd(np.array(ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
+    #HFD_2 = HiguchiFractalDimension.hfd(np.array(ECG_2), opt=True, num_k=num_k_value, k_max=k_max_value)
 
     """
     if (not math.isnan(HFD_1)):
@@ -208,18 +226,19 @@ def calculate_higuchi(ECG_1, ECG_2, num_k_value=50, k_max_value=None):
     if (not math.isnan(HFD_2)):
         dictionary_HFD_ECG_2[ecg.Id] = HFD_2"""
 
+    """
     if ((not math.isnan(HFD_1)) and (not math.isnan(HFD_2))):
         return [HFD_1, HFD_2]
     else:
         return None
-
+    """
 
     # For testing
     #dictionary_HFD_ECG_1.pop("0001")
     #dictionary_HFD_ECG_2.pop("0010")
 
     # Intersect of two sets
-    keys = list(set(dictionary_HFD_ECG_1.keys()) & set(dictionary_HFD_ECG_2.keys()))
+    #keys = list(set(dictionary_HFD_ECG_1.keys()) & set(dictionary_HFD_ECG_2.keys()))
 
     """dictionary_ages = {}
     for key in keys:
@@ -317,52 +336,93 @@ with open('number_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
 def localize_floats(row):
     return str(row).replace('.', ',') if isinstance(row, float) else row
 
+def breaked_ECGs():
+    """ECG's with breakes (empties in ECG line)"""
+
+    # Id's of breacked first ecg's
+    breaked_first_ecg_ids = []
+    # Id's of breacked second ecg's
+    breaked_second_ecg_ids = []
+
+    with open('breaked_list/breaked_first_ecg.txt', 'r', encoding='utf-8') as file:
+        for str in file:
+            breaked_first_ecg_ids.append(str.strip())  # strip - remove spaces and '\n'
+
+    with open('breaked_list/breaked_second_ecg.txt', 'r', encoding='utf-8') as file:
+        for str in file:
+            breaked_second_ecg_ids.append(str.strip())
+
+    print("Breaked_first_ecg_ids: ", breaked_first_ecg_ids)
+    print("Breaked_second_ecg_ids: ", breaked_second_ecg_ids)
+
+    return breaked_first_ecg_ids, breaked_second_ecg_ids
+
+def sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids):
+    """General for two ECG's and unique of each ECG"""
+
+    # General for two lists
+    general = list(set(breaked_first_ecg_ids) & set(breaked_second_ecg_ids))  # Пересечение множеств
+    general.sort()
+    print("General: ", general)
+
+    first_unique = list(set(breaked_first_ecg_ids) - set(general))  # First unique from general
+    second_unique = list(set(breaked_second_ecg_ids) - set(general))  # Second unique from general
+    first_unique.sort()
+    second_unique.sort()
+    print("First unique: ", first_unique)
+    print("Second unique: ", second_unique)
+
+    return general, first_unique, second_unique
 
 #######################################################################################################################
 ############################################## OPENING RECORDS ########################################################
 #######################################################################################################################
-def read_ECGs_annotation_data(is_remotely):
 
-        """ Open csv info file, print header and information for each record. Then fill ECG DATABASE. """
+def extract_ages (keys, is_remotely=False):
 
-        all_path=""
+    ages_dictionary = {}
 
-        f = open("breaks_new.txt", "a")
+    # Check, if dataset is remotely located
+    if is_remotely:
+        path = csv_info_file
+    else:
+        path = path_to_dataset_folder + '/' + csv_info_file
 
-        # Id's of breacked first ecg's
-        breaked_first_ecg_ids = []
-        # Id's of breacked second ecg's
-        breaked_second_ecg_ids = []
+    with open(path) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
 
-        with open('breaked_first_ecg.txt', 'r', encoding='utf-8') as file:
-            for str in file:
-                breaked_first_ecg_ids.append(str.strip())       #strip - remove spaces and '\n'
+        # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
+        first_row = next(csv_reader)
 
-        with open('breaked_second_ecg.txt', 'r', encoding='utf-8') as file:
-            for str in file:
-                breaked_second_ecg_ids.append(str.strip())
+        # Setting counter for first row
+        line_count = 0
 
-        print("Breaked_first_ecg_ids: ", breaked_first_ecg_ids)
-        print("Breaked_second_ecg_ids: ", breaked_second_ecg_ids)
+        # Обрабатываем оставшиеся строки
+        for row in csv_reader:
+            line_count += 1
 
-        #General for two lists
-        general = list(set(breaked_first_ecg_ids) & set(breaked_second_ecg_ids))  # Пересечение множеств
-        general.sort()
-        print("General: ", general)
+            if row[0] in keys:
+                ages_dictionary[row[0]] = row[1]
 
-        first_unique = list(set(breaked_first_ecg_ids) - set(general)) # First unique from general
-        second_unique = list(set(breaked_second_ecg_ids) - set(general)) # Second unique from general
-        first_unique.sort()
-        second_unique.sort()
-        print("First unique: ", first_unique)
-        print("Second unique: ", second_unique)
-        # Check, if dataset is remotely locatedS
-        if not is_remotely:
-            all_path=path+'/'+csv_info_file
+    return ages_dictionary
+def read_ECGs_annotation_data(is_remotely, except_breaked):
+
+        """ Open csv info file, print header and information for each record.
+        Then fill ECG DATABASE."""
+
+        # Path to CSV file with annotation
+        path=""
+
+        breaked_first_ecg_ids, breaked_second_ecg_ids = breaked_ECGs()
+        general, first_unique, second_unique = sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids)
+
+        # Check, if dataset is remotely located
+        if is_remotely:
+            path = csv_info_file
         else:
-            all_path=csv_info_file
+            path = path_to_dataset_folder + '/' + csv_info_file
 
-        with open(all_path) as csv_file:
+        with open(path) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
 
             # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
@@ -379,73 +439,55 @@ def read_ECGs_annotation_data(is_remotely):
 
                 line_count += 1
 
-                # Union of general and firs_unique (breaked first ECG)
-                if (row[0] in general or row[0] in first_unique):
+                # Union of general and first_unique (breaked first ECG)
+                breaked_first_ecg = list(set(general) | set(first_unique))
+                breaked_first_ecg.sort()
+
+
+                # Check, if ECG in first ecg breaked list
+                if (row[0] in breaked_first_ecg):
                     continue
+
                 # 780 - 800
                 if (line_count < 780 or line_count > 800):
                     continue
-                # Take only one ecg
-                #if (line_count > 1):
-                #    return
 
                 # If Id is not available
                 if (row[0] == 'NaN'):
                     continue
 
-
-                # If age category is available
-                if (not (row[1] == 'NaN')):
+                # If age category is not available. For future maybe do self-organizing without ages.
+                if (row[1] == 'NaN'):
+                    continue
+                else:
                     # Open record returns ecg_1 and ecg_2
-                    ecg_s = open_records(row[0], 0, None, f, remotely=is_remotely)
+                    ecg_s = open_record(row[0], 0, None, remotely=is_remotely)
+
+                    if ecg_s is None:
+                        continue
 
                     # Signal with first ECG
                     signal = ecg_s[0]
 
+                    # Частота дискретизації
                     sampling_rate = 1000
 
-                    #################################### BIO SPPY #####################################################
-                    # load raw ECG signal
-                    #signal, mdata = storage.load_txt('./examples/ecg.txt')
+                    r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
-                    extended_signal = np.pad(signal, (300, 300), mode='edge')  # Добавление 100 отсчетов
-                    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=False)
-                    r_peaks = out['rpeaks']  # Корректировка индексов R-пиков
+                    #plot_R_peaks(r_peaks, singnal)
 
-                    # Дополнительно: сохранение в файл
-                    np.savetxt("rr_intervals/peaks_{0}.txt".format(row[0]), r_peaks,
-                               header="Peaks (s)", comments='', fmt="%.6f")
-                    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=True)
-                    # process it and plot
-                    #out = ecg.ecg(signal=signal, sampling_rate=sampling_rate, show=True)
 
-                    # Дополнительно: сохранение в файл
 
-                    # Получение R-пиков
-                    #r_peaks = out['rpeaks']
-                    # Вычисляем R-R интервалы (в милисекундах)
-                    rr_intervals = np.diff(r_peaks)
 
-                    """
-                    # Plotting the R peak locations in ECG signal
-                    plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(signal) + 1, 150))
-                    plt.plot(signal, color='blue')
-                    for p in r_peaks:
-                        plt.scatter(p, signal[p], color='red', s=50, marker='*')
-                    plt.xlabel('Samples')
-                    plt.ylabel('MLIImV')
-                    plt.title("R Peak Locations")
-                    """
-                    np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(row[0]), rr_intervals,
-                               header="RR Intervals (s)", comments='', fmt="%.6f")
+
+
 
                     ###################################################################################################
                     #################################### TO RR - intervals ############################################
-                    """
-                    # Предобработка
-                    ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
 
+                    # Предобработка neurokit2
+                    #ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
+                    """
                     # Детекция R-зубцов
                     r_peaks, _ = nk.ecg_peaks(ecg_cleaned, sampling_rate=sampling_rate)
 
@@ -518,16 +560,17 @@ def read_ECGs_annotation_data(is_remotely):
                     #ecg_out = (signal - baseline)
 
 
-#<<<<<<< HEAD
+
                     #QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
                     #ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
                     #output_signal = QRS_detector.solve(ecg)
-#=======
+
                     #Низкочастотный фильтр
                     # Параметры фильтра
-                    cutoff = 15.0  # Граничная частота (Гц)
-                    fs = 1000.0  # Частота дискретизации (Гц)
-                    order = 4
+
+                    #cutoff = 15.0  # Граничная частота (Гц)
+                    #fs = 1000.0  # Частота дискретизации (Гц)
+                    #order = 4
 
                     # Исходный сигнал (например, из ваших данных)
                     # signal = ...
@@ -537,30 +580,66 @@ def read_ECGs_annotation_data(is_remotely):
 
                     #plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
 
-#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+
 
 
 
                     #plot_tompkins(pan_tompkins.bpass, pan_tompkins.der, pan_tompkins.sqr, pan_tompkins.mwin)
                     #calculate_heart_rate(ecg)
 
-                    if ecg_s is None:
-                        continue
+
                     # Calling constructor for RECORD and automatically saving to DATABASE
-                    #record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5], ecg_s[0], ecg_s[1])
+                    #record = RECORD(row[0], row[1], row[2], row[3], row[4], row[5])
                     #test_record_for_breaks(record)
-                else:
-                    continue
+
 
                 #if (not (row[0] == 'NaN')):
                 #   selected_records.append(row[0])
 
 
+def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
+    """BIO SPPY library for extracting RR-intervals from ECG signal
+        input:
+            signal - ECG signal
+            sampling_rate - sampling_rate
+            Id - id of record
 
-        f.close()
+    """
+
+    # signal, mdata = storage.load_txt('./examples/ecg.txt')
+
+    # Додання 300 відліків зліва та справа
+    extended_signal = np.pad(signal, (300, 300), mode='edge')
+    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=False)
+    r_peaks = out['rpeaks']  # Отримання індексів R-піків
+
+    # Дополнительно: сохранение в файл
+    np.savetxt("rr_peaks/peaks_{0}.txt".format(id), r_peaks,
+               header="Peaks (s)", comments='', fmt="%.6f")
+
+    # Process it and plot
+    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=True)
+
+    # Вычисляем R-R интервалы (в милисекундах)
+    rr_intervals = np.diff(r_peaks)
+
+    np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(id), rr_intervals,
+               header="RR Intervals (s)", comments='', fmt="%.6f")
+
+    return r_peaks, rr_intervals
+
+def plot_R_peaks(picks, signal):
+    # Plotting the R peak locations in ECG signal
+    plt.figure(figsize=(20, 4), dpi=100)
+    plt.xticks(np.arange(0, len(signal) + 1, 150))
+    plt.plot(signal, color='blue')
+    for p in r_peaks:
+        plt.scatter(p, signal[p], color='red', s=50, marker='*')
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("R Peak Locations")
 
 
-#<<<<<<< HEAD
 def calculate_heart_rate(ecg):
     # Convert ecg signal to numpy array
     signal = ecg.iloc[:,1].to_numpy()
@@ -628,7 +707,7 @@ def plot_tompkins(bpass, der, sqr, mwin):
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Moving Window Integrated Signal")
-#=======
+
 from scipy.signal import butter, filtfilt
 
 # Низкочастотный фильтр
@@ -638,7 +717,7 @@ def butter_lowpass_filter(data, cutoff, fs, order=4):
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     y = filtfilt(b, a, data)
     return y
-#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+
 
 
 
@@ -647,7 +726,7 @@ def butter_lowpass_filter(data, cutoff, fs, order=4):
 
 
 def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, low_pass_filtered):
-#>>>>>>> fd1fd4467c513d087a5e66e3e79bb722d5280811
+
     """Plot signal, baseline on first plot. Plot output signal without baseline on the second plot.
 
     :param signal: input ECG signal
@@ -732,7 +811,19 @@ def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, b
     # Show the interactive plot
     plt.show()
 
-def open_records(id, min_point, max_point, f, remotely):
+def open_record_wfdb(id, min_point, max_point, remotely):
+    """Open record with wfdb"""
+    record = None
+
+    if remotely:
+        record = wfdb.rdrecord(id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular')
+    else:
+        record = wfdb.rdrecord(
+            path_to_dataset_folder + '/' + id, min_point, max_point, [0, 1])
+
+    return record
+
+def open_record(id, min_point, max_point, remotely):
 
     """ Open each record with ECGs by Id
 
@@ -756,36 +847,23 @@ def open_records(id, min_point, max_point, f, remotely):
                 [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG.
             """
 
-
-
     record = None
-    try:
-        if min_point < 0:
-            print("Too low minimal point of ECG! Now minimal point is 0!")
-            min_point = 0
 
-        if not remotely:
-            record = wfdb.rdrecord(
-                path + '/' + id, min_point, max_point, [0, 1])
-        else:
-            record = wfdb.rdrecord(id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular')
-    except :
-        if os.path.isfile(path + '/' + id+'.hea') or os.path.isfile(path + '/' + id+'.dat'):
-            max_point = None
-            print("Too hight maximal point of ECG! Now maximal point is None!")
+    if min_point < 0:
+        print("Too low minimal point of ECG! Now minimal point is 0!")
+        min_point = 0
 
-    if record is None:
-
+    if os.path.isfile(path_to_dataset_folder + '/' + id + '.hea') or os.path.isfile(path_to_dataset_folder + '/' + id + '.dat'):
         try:
-            if not remotely:
-                record = wfdb.rdrecord(
-                    path + '/' + id, min_point, max_point, [0, 1])
-            else:
-                record = wfdb.rdrecord(id, min_point, max_point, [0, 1], pn_dir='autonomic-aging-cardiovascular')
-        except:
-            print("File with record doesn't open!")
-            return None
+            record = open_record_wfdb(id, min_point, max_point, remotely)
 
+        except:
+            max_point = None
+            record = open_record_wfdb(id, min_point, max_point, remotely)
+            print("Too hight maximal point of ECG! Now maximal point is None!")
+    else:
+        print("File with record doesn't exist!")
+        return None
 
     #display(record.__dict__)
 
@@ -809,57 +887,16 @@ def open_records(id, min_point, max_point, f, remotely):
     print("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
     #print(sequence)
 
-    """Create breaks file
-    breaks_1, breaks_2 = test_record_for_breaks(sequence_1, sequence_2)
-
-    consecutive_breaks1 = find_consecutive_breaks(breaks_1)
-    consecutive_breaks2 = find_consecutive_breaks(breaks_2)
-
-    print(consecutive_breaks1)
-    print(consecutive_breaks2)
-
-    if len(consecutive_breaks1) > 0 or len(consecutive_breaks2) > 0:
-        f.write(id)
-        f.write("\n")
-        f.write("\n")
-        f.write("Length of first ECG with id {0}: {1}".format(id, str(len(sequence_1))))
-        f.write("\n")
-        f.write("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
-        f.write("\n")
-        f.write("\n")
-        if(len(breaks_1) > 0):
-            f.write("Breaks with first: {0}".format(True))
-        f.write("\n")
-        if (len(breaks_2) > 0):
-            f.write("Breaks with second: {0}".format(True))
-        f.write("\n")
-        f.write("\n")
-        if (len(consecutive_breaks1) > 0):
-            f.write("Consecutive_breaks 1: ")
-        f.write("\n")
-        f.write("\n")
-        for c_b in consecutive_breaks1:
-            f.write(str(c_b))
-            f.write("\n")
-        f.write("\n")
-        f.write("\n")
-        if (len(consecutive_breaks2) > 0):
-            f.write("Consecutive_breaks 2: ")
-        f.write("\n")
-        f.write("\n")
-        for c_b in consecutive_breaks2:
-            f.write(str(c_b))
-            f.write("\n")
-        f.write("\n")
-        f.write("\n")
-        f.write("\n")
-    """
+    #create_breaks_file(sequence_1, sequence_2)
     wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
     #n = input()
+
     return [sequence_1, sequence_2]
 
+
+
 #####################################################################################################################
-#####################################################################################################################
+###################################### TEST RECORD FOR BREAKS #######################################################
 #####################################################################################################################
 
 def test_record_for_breaks(sequence_1, sequence_2):
@@ -867,6 +904,9 @@ def test_record_for_breaks(sequence_1, sequence_2):
         input:
             sequence_1: First ECG sequence
             sequence_2: Second ECG sequence
+        output:
+            breaks1_list: Empty spaces of first ECG
+            breaks2_list: Empty spaces of second ECG
     """
 
     breaks1_list = []
@@ -889,6 +929,17 @@ def test_record_for_breaks(sequence_1, sequence_2):
         print("Breaks with second: True")
     return breaks1_list, breaks2_list
 
+"""
+def test_records_for_breaks():
+    for key in DATABASE.keys:
+        record = DATABASE[key]
+        for point in record.ECG_1:
+            if point == math.nan:
+                print("Record {0} has break", key)
+        for point in record.ECG_2:
+            if point == math.nan:
+                print("Record {0} has break", key)
+"""
 def find_consecutive_breaks(points):
     """
     Identifies consecutive breaks in a list of points.
@@ -917,15 +968,60 @@ def find_consecutive_breaks(points):
     consecutive_ranges.append((start, prev))
     return consecutive_ranges
 
-def test_records_for_breaks():
-    for key in DATABASE.keys:
-        record = DATABASE[key]
-        for point in record.ECG_1:
-            if point == math.nan:
-                print("Record {0} has break", key)
-        for point in record.ECG_2:
-            if point == math.nan:
-                print("Record {0} has break", key)
+
+def create_breaks_file(sequence_1, sequence_2):
+    """Create breaks file"""
+    f = open("breaked_list/breaks_new.txt", "a")
+
+    breaks_1, breaks_2 = test_record_for_breaks(sequence_1, sequence_2)
+
+    consecutive_breaks1 = find_consecutive_breaks(breaks_1)
+    consecutive_breaks2 = find_consecutive_breaks(breaks_2)
+
+    print(consecutive_breaks1)
+    print(consecutive_breaks2)
+
+    if len(consecutive_breaks1) > 0 or len(consecutive_breaks2) > 0:
+        f.write(id)
+        f.write("\n")
+        f.write("\n")
+        f.write("Length of first ECG with id {0}: {1}".format(id, str(len(sequence_1))))
+        f.write("\n")
+        f.write("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
+        f.write("\n")
+        f.write("\n")
+        if (len(breaks_1) > 0):
+            f.write("Breaks with first: {0}".format(True))
+        f.write("\n")
+        if (len(breaks_2) > 0):
+            f.write("Breaks with second: {0}".format(True))
+        f.write("\n")
+        f.write("\n")
+        if (len(consecutive_breaks1) > 0):
+            f.write("Consecutive_breaks 1: ")
+        f.write("\n")
+        f.write("\n")
+        for c_b in consecutive_breaks1:
+            f.write(str(c_b))
+            f.write("\n")
+        f.write("\n")
+        f.write("\n")
+        if (len(consecutive_breaks2) > 0):
+            f.write("Consecutive_breaks 2: ")
+        f.write("\n")
+        f.write("\n")
+        for c_b in consecutive_breaks2:
+            f.write(str(c_b))
+            f.write("\n")
+        f.write("\n")
+        f.write("\n")
+        f.write("\n")
+    f.close()
+
+    
+######################################################################################################################
+######################################################################################################################
+######################################################################################################################
 
 def save_to_csv(id, sequences, filename):
     """Save ECG sequences to CSV format with time and ecg values"""
@@ -942,12 +1038,6 @@ def save_to_csv(id, sequences, filename):
             writer.writerow([time, value])
 
     print(f"ECG data saved to {filename}")
-
-
-    
-######################################################################################################################
-######################################################################################################################
-######################################################################################################################
 
 """
 
@@ -1164,7 +1254,19 @@ def save_to_csv(id, sequences, filename):
         #RECORD.print_database()
 """
 
+def write_HFD_calculated_values_to_csv(hfd_of_ecg_1, age_indexes_for_id, age_ranges_for_id):
+    # ECG 1 and 2 simulationusly
 
+    with open('output/HFD_calculated.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+        for key in hfd_of_ecg_1.keys():
+            spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1[key])])
+
+        """, RECORD.DATABASE[type_of_ecg_cut][key].Sex,
+                                 RECORD.DATABASE[type_of_ecg_cut][key].BMI]"""
+"""
 def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, minutes_passed):
     # ECG 1 and 2 simulationusly
 
@@ -1176,8 +1278,9 @@ def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, a
             spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1_and_2[key][0]),
                                  localize_floats(hfd_of_ecg_1_and_2[key][1]), sexes[key], bmis[key], length[key]])
 
-        """, RECORD.DATABASE[type_of_ecg_cut][key].Sex,
-                                 RECORD.DATABASE[type_of_ecg_cut][key].BMI]"""
+        """""", RECORD.DATABASE[type_of_ecg_cut][key].Sex,
+                                 RECORD.DATABASE[type_of_ecg_cut][key].BMI]""""""
+"""
 def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group, type_of_ecg_cut):
     with open('number_of_ECGs_per_each_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
@@ -1185,7 +1288,15 @@ def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group
 
         for key in ecg_count_per_each_age_group.keys():
             spamwriter.writerow([key, ecg_count_per_each_age_group[key]])
+def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group):
+    with open('HFD_average_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
+        for key in higuchi_average_per_each_age_group.keys():
+            spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key]),
+                                     localize_floats(higuchi_average_per_each_age_group[key][1])])
+"""            
 def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group, type_of_ecg_cut):
     with open('HFD_average_of_ECG_per_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
@@ -1193,22 +1304,25 @@ def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_gro
 
         for key in higuchi_average_per_each_age_group.keys():
             spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key][0]),
-                                     localize_floats(higuchi_average_per_each_age_group[key][1])])
-#<<<<<<< HEAD
-#=======
-def open_record(id, min_point, max_point):
+                                     localize_floats(higuchi_average_per_each_age_group[key][1])])"""
 
-    """ Open each record with ECG by Id
+
+
+
+
+#def open_record(id, min_point, max_point):
+
+""" Open each record with ECG by Id
 
         Input parapeters:
             - Id - id of record
             - min_point - minimum point, at which starts ECG (including this point)
             - max_point - maximum point, at which ends ECG (not including this point)"""
 
-    # wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
-    # 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
-    # None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
-
+# wfdb.rdrecord(... [0, 1] - first two channels (ECG 1, ECG 2); [0] - only first ECG
+# 0 - The starting sample number to read for all channels (point from what graphic starts (min_point)).
+# None - The sample number at which to stop reading for all channels (max_point). Reads the entire duration by default.
+"""
     try:
         record = wfdb.rdrecord(
             path + '/' + id, min_point, max_point, [0, 1])
@@ -1220,13 +1334,13 @@ def open_record(id, min_point, max_point):
 
 
     #display(record.__dict__)
-#>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
 
 
 
 
-#Q<<<<<<< HEAD
-#=======
+
+
+
     # print(record.p_signal)
 
     for x in record.p_signal:
@@ -1265,7 +1379,8 @@ def open_record(id, min_point, max_point):
 
     return [sequence_1, sequence_2]
 
-#>>>>>>> a7e22fc04678f933cea1483c155fdcd1e8416900
+
+"""
 """
 def convert_record_psignal_to_sequences(p_signal):
 
@@ -1573,6 +1688,101 @@ def print_hi(name):
     print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
 
 
+def list_rr_intervals_dir():
+    """Get files with rr_intervals"""
+    import os
+
+    directory = rr_intervals_folder
+
+    # Фильтрация только файлов
+    files = [file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))]
+
+    for file in files:
+        print(file)
+
+    return files
+
+def extract_from_file_rr_time_series(files):
+    import re
+
+    rr_time_series_dictionary = {}
+
+
+
+    for file in files:
+        filename = file
+
+        # Используем регулярное выражение для извлечения числового индекса
+        match = re.search(r'_(\d+)\.txt', filename)
+        if match:
+            index = match.group(1)
+            rr_time_series_dictionary[index] = None
+            #print("Индекс:", index)
+
+            file_path = rr_intervals_folder + "/" + file
+            # Чтение файла, начиная со второй строки
+            with open(file_path, "r") as file:
+                # Пропускаем первую строку
+                next(file)
+
+                # Читаем остальные строки
+                rr_intervals = [line.strip() for line in file]
+
+            # Вывод значений
+            #for rr in rr_intervals:
+            #    print(rr)
+
+            rr_intervals = [int(float(x)) for x in rr_intervals]
+            #print(rr_intervals)
+            rr_time_series_dictionary[index] = rr_intervals
+
+        else:
+            print("Индекс не найден")
+
+    #print(rr_time_series_dictionary)
+
+    return rr_time_series_dictionary
+
+
+def preprocess_rr_intervals(rr_intervals, mode="fixed_count", count=440, duration=300000):
+    """
+    Предобработка RR-интервалов: выбор фиксированного количества точек или временного интервала.
+
+    :param rr_intervals: массив RR-интервалов (в мс)
+    :param mode: "fixed_count" (фиксированное количество) или "fixed_duration" (фиксированная длительность)
+    :param count: количество RR-интервалов (например, 500)
+    :param duration: длительность анализа в мс (например, 300000 мс = 5 минут)
+    :return: обработанный массив RR-интервалов
+    """
+    rr_intervals = np.array(rr_intervals)  # Преобразуем в массив numpy
+    avg_rr = np.mean(rr_intervals)  # Средний RR-интервал
+    hr = 60000 / avg_rr  # ЧСС (уд/мин)
+
+    print(f"Средний RR-интервал: {avg_rr:.2f} мс, ЧСС: {hr:.2f} уд/мин")
+
+    if mode == "fixed_count":
+        print("Всего: "+str(len(rr_intervals)))
+        print(f"Выбрано {count} RR-интервалов")
+        return rr_intervals[:count]  # Берем первые count точек
+
+    elif mode == "fixed_duration":
+        total_time = np.cumsum(rr_intervals)  # Суммируем RR-интервалы
+        valid_indices = np.where(total_time <= duration)[0]  # Ищем точки, укладывающиеся в duration
+        print(f"Выбрано {len(valid_indices)} RR-интервалов (на {duration / 1000} секунд)")
+        return rr_intervals[valid_indices]  # Возвращаем только эти точки
+
+    else:
+        raise ValueError("Неверный режим. Используйте 'fixed_count' или 'fixed_duration'.")
+
+
+def check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, min_time=300000):
+    """Перевірити, чи сума інтервалів часового ряду менша 5 хв"""
+
+
+    for key in rr_time_series_dictionary.keys():
+        summ = np.sum(rr_time_series_dictionary[key])
+        if summ < min_time:
+            print("Запись временных рядов меньше 5 минут!")
 
 
 if __name__ == '__main__':
@@ -1646,7 +1856,65 @@ if __name__ == '__main__':
     ###################################################################################################################
 
     #read_ECG_annotation_data(1057346, TypeOfECGCut.full, should_additionally_cat_minutes_points, 5)
-    read_ECGs_annotation_data(False)
+
+
+
+
+
+    ############################################## !!!!!!!!!!!! ######################################################
+
+    read_ECGs_annotation_data(False, True)
+
+    """
+    num_k_value = 50
+    k_max_value = None
+
+
+    files = list_rr_intervals_dir()
+    rr_time_series_dictionary = extract_from_file_rr_time_series(files)
+
+    # Find minimum len of rr_time_series
+    min_len = 1000000
+    for key in rr_time_series_dictionary.keys():
+        ln = len(rr_time_series_dictionary[key])
+        if ln < min_len:
+            min_len = ln
+    print(min_len)
+
+
+
+    check_min_time(rr_time_series_dictionary)
+    """
+
+
+
+    # Пример RR-интервалов (синтетические данные, реальные данные можно загрузить из файла)
+    #np.random.seed(42)
+    #rr_intervals = np.random.normal(800, 50, 1000)  # Генерируем 1000 RR-интервалов со средним 800 мс
+    """
+    for key in rr_time_series_dictionary.keys():
+        rr_intervals = rr_time_series_dictionary[key]
+        
+        # Выбираем фиксированное количество (500 RR-интервалов)
+        selected_rr_1 = preprocess_rr_intervals(rr_intervals, mode="fixed_count", count=440)
+
+        # Выбираем фиксированную длительность (5 минут)
+        selected_rr_2 = preprocess_rr_intervals(rr_intervals, mode="fixed_duration", duration=300000)
+
+        # Визуализация
+        plt.figure(figsize=(12, 5))
+        plt.plot(selected_rr_1, label="440 RR-интервалов", alpha=0.7)
+        plt.plot(selected_rr_2, label="5 минут записи", linestyle="dashed", alpha=0.7)
+        plt.xlabel("Индекс")
+        plt.ylabel("RR-интервал (мс)")
+        plt.legend()
+        plt.title("Выбор RR-интервалов разными методами")
+        plt.show()
+    """
+    # 440
+    #calculate_higuchi(rr_time_series_dictionary)
+
+
     #test_records_for_breaks()
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
