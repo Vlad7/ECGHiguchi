@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -209,6 +209,32 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
 
     write_HFD_calculated_values_to_csv(dictionary_HFD_ECG_1,dictionary_ages,dictionary_age_ranges)
 
+    age_category_ids_dictionary = {}
+
+    # For each age range list of id's
+
+    for key in dictionary_ages.keys():
+
+        if age_category_ids_dictionary.keys().__contains__(dictionary_ages[key]):
+            age_category_ids_dictionary[dictionary_ages[key]].append(key)
+        else:
+            age_category_ids_dictionary[dictionary_ages[key]] = [key]
+
+    HFD_average_by_age_range = {}
+
+    for key in age_category_ids_dictionary.keys():
+
+        HFD_1_summ = 0
+        #HFD_2_average = 0
+
+        for age_range_key in age_category_ids_dictionary[key]:
+            HFD_1_summ += dictionary_HFD_ECG_1[age_range_key]
+            #HFD_2_average += dictionary_HFD_ECG_1_2[age_range_key][1]
+
+        length_of_age_range_ids_list = len(age_category_ids_dictionary[key])
+        HFD_average_by_age_range[key] = HFD_1_summ / length_of_age_range_ids_list
+
+    write_average_HFD_values_for_each_age_range(HFD_average_by_age_range)
 
     #ECG_count_per_age_group_dictionary = {}
 
@@ -258,32 +284,11 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
             ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] += 1
         else:
             ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] = 1
+    """
 
-    age_category_ids_dictionary = {}
 
-    #For each age range list of id's
-
-    for key in dictionary_ages.keys():
-
-        if age_category_ids_dictionary.keys().__contains__(dictionary_ages[key]):
-            age_category_ids_dictionary[dictionary_ages[key]].append(key)
-        else:
-            age_category_ids_dictionary[dictionary_ages[key]] = [key]
-
-    HFD_average_by_age_range = {}
-
-    for key in age_category_ids_dictionary.keys():
-
-        HFD_1_average = 0
-        HFD_2_average = 0
-
-        for age_range_key in age_category_ids_dictionary[key]:
-            HFD_1_average += dictionary_HFD_ECG_1_2[age_range_key][0]
-            HFD_2_average += dictionary_HFD_ECG_1_2[age_range_key][1]
-
-        length_of_age_range_id_list = len(age_category_ids_dictionary[key])
-        HFD_average_by_age_range[key] = [HFD_1_average / length_of_age_range_id_list, HFD_2_average / length_of_age_range_id_list]
-
+    """
+    
     print(age_category_ids_dictionary)
     print(HFD_average_by_age_range)
     #print(dictionary_HFD_ECG_1)
@@ -449,7 +454,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     continue
 
                 # 780 - 800
-                if (line_count < 780 or line_count > 800):
+                if (line_count < 818 or line_count > 900):
                     continue
 
                 # If Id is not available
@@ -1266,21 +1271,9 @@ def write_HFD_calculated_values_to_csv(hfd_of_ecg_1, age_indexes_for_id, age_ran
 
         """, RECORD.DATABASE[type_of_ecg_cut][key].Sex,
                                  RECORD.DATABASE[type_of_ecg_cut][key].BMI]"""
-"""
-def write_HFD_calculated_values_to_csv(hfd_of_ecg_1_and_2, age_indexes_for_id, age_ranges_for_id, type_of_ecg_cut, sexes, bmis, length, minutes_passed):
-    # ECG 1 and 2 simulationusly
 
-    with open('HFD_calculated_after_minutes_' + str(total_minutes_points_from_ECG_start) + "_" + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
-        spamwriter = csv.writer(csvfile, delimiter=';',
-                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-        for key in hfd_of_ecg_1_and_2.keys():
-            spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1_and_2[key][0]),
-                                 localize_floats(hfd_of_ecg_1_and_2[key][1]), sexes[key], bmis[key], length[key]])
 
-        """""", RECORD.DATABASE[type_of_ecg_cut][key].Sex,
-                                 RECORD.DATABASE[type_of_ecg_cut][key].BMI]""""""
-"""
 def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group, type_of_ecg_cut):
     with open('number_of_ECGs_per_each_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
@@ -1294,8 +1287,7 @@ def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_gro
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
         for key in higuchi_average_per_each_age_group.keys():
-            spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key]),
-                                     localize_floats(higuchi_average_per_each_age_group[key][1])])
+            spamwriter.writerow([key, localize_floats(higuchi_average_per_each_age_group[key])])
 """            
 def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group, type_of_ecg_cut):
     with open('HFD_average_of_ECG_per_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
@@ -1863,9 +1855,9 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    read_ECGs_annotation_data(False, True)
+    #read_ECGs_annotation_data(False, True)
 
-    """
+
     num_k_value = 50
     k_max_value = None
 
@@ -1873,6 +1865,13 @@ if __name__ == '__main__':
     files = list_rr_intervals_dir()
     rr_time_series_dictionary = extract_from_file_rr_time_series(files)
 
+    # 440 min count, all > 5 min
+    preprocessed_dictionary = {}
+
+    for key in rr_time_series_dictionary.keys():
+        preprocessed_dictionary[key] = preprocess_rr_intervals(rr_time_series_dictionary[key])
+
+    """
     # Find minimum len of rr_time_series
     min_len = 1000000
     for key in rr_time_series_dictionary.keys():
@@ -1882,9 +1881,9 @@ if __name__ == '__main__':
     print(min_len)
 
 
-
-    check_min_time(rr_time_series_dictionary)
     """
+    #check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary)
+
 
 
 
@@ -1911,10 +1910,10 @@ if __name__ == '__main__':
         plt.title("Выбор RR-интервалов разными методами")
         plt.show()
     """
-    # 440
-    #calculate_higuchi(rr_time_series_dictionary)
 
+    calculate_higuchi(preprocessed_dictionary)
 
+    """
     #test_records_for_breaks()
     # Example usage
     path = "/path/to/data"  # Update this path to the location of your data files
@@ -1925,8 +1924,7 @@ if __name__ == '__main__':
     sequences = [DATABASE['0001'].ECG_1, DATABASE['0001'].ECG_2]
     if sequences is not math.nan:
         save_to_csv(record_id, sequences, f"ecg_{record_id}.csv")
-
-
+    """
 
 
     print_database_attributes()
