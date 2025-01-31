@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -479,7 +479,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     continue
 
                 # 780 - 800
-                if (line_count < 900 or line_count > 1000):
+                if (line_count < 1081):
                     continue
 
                 # If Id is not available
@@ -1899,9 +1899,9 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    #read_ECGs_annotation_data(False, True)
+    read_ECGs_annotation_data(False, True)
 
-
+    """
     num_k_value = 50
     k_max_value = None
 
@@ -1916,7 +1916,7 @@ if __name__ == '__main__':
 
     for key in rr_time_series_dictionary.keys():
         preprocessed_dictionary[key] = preprocess_rr_intervals(rr_time_series_dictionary[key])
-
+    """
 
 
     #check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary)
