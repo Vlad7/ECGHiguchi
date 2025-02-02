@@ -1,6 +1,6 @@
 # This is an ECG Higuchi script.
 
-# Press Shift+F10 to execute it or replace it with your code.
+
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 # Age groups
@@ -228,7 +228,7 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
     ##############################################################################################
 
     # Dictionary with id's for each age category, for each age range list of id's
-    age_category_ids_dictionary = get_ids_of_age_range_from_ages_dictionary(age_ranges_dictionary)
+    age_category_ids_dictionary = get_ids_of_age_range_from_ages_dictionary(id_ageRange_dict)
 
     train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dictionary)
 
@@ -277,21 +277,11 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
         age_range_indexes[key] = age_groups[ecg.AgeGroup]
 
 
-
-
-
-
-
-
-
-
         if (ECG_count_per_age_group_dictionary.keys().__contains__(age_groups[ecg.AgeGroup])):
             ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] += 1
         else:
             ECG_count_per_age_group_dictionary[age_groups[ecg.AgeGroup]] = 1
     """
-
-
     """
     
     print(age_category_ids_dictionary)
@@ -300,13 +290,9 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
     #print(dictionary_HFD_ECG_2)
     #print(dictionary_HFD_ECG_1_2)"""
 
-
     # Save age statistics
     """
-    
 """
-
-
     """
     print("ID: " + row[0])
     print("Higuchi fractal dimension of ECG 1: " + str(HFD_1))
@@ -439,7 +425,12 @@ def HFD_average_by_age_range(age_category_ids_dictionary, ECG_1_RR_intervals_HFD
     return HFD_average_by_age_range
 
 def localize_floats(row):
+    """Replace . by , in float"""
     return str(row).replace('.', ',') if isinstance(row, float) else row
+
+######################################################################################################################
+######################################### LOAD BREAKED ECG'S #########################################################
+######################################################################################################################
 
 def breaked_ECGs():
     """ECG's with breakes (empties in ECG line)"""
@@ -527,12 +518,18 @@ def extract_age_ranges_from_annotation_file (ids, is_remotely=False):
 def read_ECGs_annotation_data(is_remotely, except_breaked):
 
         """ Open csv info file, print header and information for each record.
-        Then fill ECG DATABASE."""
+
+            input: is_remotely - download annotation file and record remotely from internet
+
+        """
 
         # Path to CSV file with annotation
         path=""
 
+        # Id's of breaked first and second ecg's
         breaked_first_ecg_ids, breaked_second_ecg_ids = breaked_ECGs()
+
+        # Id's general both for first ecg, first unique, second unique
         general, first_unique, second_unique = sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids)
 
         # Check, if dataset is remotely located
@@ -553,15 +550,14 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             for col in first_row:
                 DATABASE_ATTRIBUTES.append(col)
 
+            # Union of general and first_unique (breaked first ECG)
+            breaked_first_ecg = list(set(general) | set(first_unique))
+            breaked_first_ecg.sort()
+
             # Обрабатываем оставшиеся строки
             for row in csv_reader:
 
                 line_count += 1
-
-                # Union of general and first_unique (breaked first ECG)
-                breaked_first_ecg = list(set(general) | set(first_unique))
-                breaked_first_ecg.sort()
-
 
                 # Check, if ECG in first ecg breaked list
                 if (row[0] in breaked_first_ecg):
@@ -578,6 +574,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 # If age category is not available. For future maybe do self-organizing without ages.
                 if (row[1] == 'NaN'):
                     continue
+
                 else:
                     # Open record returns ecg_1 and ecg_2
                     ecg_s = open_record(row[0], 0, None, remotely=is_remotely)
@@ -593,7 +590,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
                     r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
-                    #plot_R_peaks(r_peaks, singnal)
+                    #plot_R_peaks(r_peaks, signal)
 
 
 
@@ -601,76 +598,12 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
 
 
-                    ###################################################################################################
-                    #################################### TO RR - intervals ############################################
 
-                    # Предобработка neurokit2
-                    #ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
-                    """
-                    # Детекция R-зубцов
-                    r_peaks, _ = nk.ecg_peaks(ecg_cleaned, sampling_rate=sampling_rate)
+                    ######################## ECG TO RR - intervals with NEUROKIT 2 ####################################
 
-                    #Получаем индексы R - зубцов
-                    peaks = _["ECG_R_Peaks"].astype(int)
-
-                    # Проверяем, что индексы находятся в пределах сигнала
-                    if np.any(peaks >= len(signal)) or np.any(peaks < 0):
-                        raise ValueError("Некоторые индексы R-зубцов выходят за пределы сигнала.")
-
-                    print("Тип peaks:", type(peaks))
-
-                    # Дополнительно: сохранение в файл
-                    np.savetxt("rr_intervals/peaks_{0}.txt".format(row[0]), peaks,
-                               header="Peaks (s)", comments='', fmt="%.6f")
-
-                    # Преобразуем индексы в временные метки (в секундах)
-                    #r_timestamps = np.array(peaks) / sampling_rate
-                    print("Peaks in milliseconds: ",peaks)
-                    # Вычисляем R-R интервалы (в милисекундах)
-                    rr_intervals = np.diff(peaks)
-
-                    # Вывод R-R интервалов
-                    print("R-R интервалы (в милисекундах):", rr_intervals)
-
-                    # Дополнительно: сохранение в файл
-                    np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(row[0]), rr_intervals, header="RR Intervals (s)", comments='', fmt="%.6f")
-
-
-                    # Plotting bandpassed signal
-                    plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 150))
-                    plt.plot(ecg_cleaned)
-                    plt.xlabel('Samples')
-                    plt.ylabel('MLIImV')
-                    plt.title("Cleaned signal")
-
-
-
-
-
-                    # Расчет R-R интервалов
-                    #rr_intervals = nk.ecg_interval(r_peaks, sampling_rate=sampling_rate)
-
-                    # Сохранение результата
-                    #rr_intervals.to_csv("rr_intervals.csv", index=False)
-
-
-                    # Plotting the R peak locations in ECG signal
-                    plt.figure(figsize=(20, 4), dpi=100)
-                    plt.xticks(np.arange(0, len(signal) + 1, 150))
-                    plt.plot(signal, color='blue')
-                    for p in peaks:
-                        plt.scatter(p, signal[p], color='red', s=50, marker='*')
-                    plt.xlabel('Samples')
-                    plt.ylabel('MLIImV')
-                    plt.title("R Peak Locations")
+                    #ECG_to_RR_intervals_with_neurokit2(signal)
                     
-
-                    """
-
-                    # Сохранение результата
-                    #rr_intervals.to_csv("rr_intervals.csv", index=False)
-
+                    ######################## ECG TO RR - interval with Pan Tompkins ##################################
 
                     # Baseline wander of the signal
                     #baseline = bwr.calc_baseline(signal)
@@ -678,29 +611,23 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # Remove baseline from original signal
                     #ecg_out = (signal - baseline)
 
-
-
-                    #QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
-                    #ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), ecg_out]).T, columns=['TimeStamp', 'ecg'])
-                    #output_signal = QRS_detector.solve(ecg)
-
-                    #Низкочастотный фильтр
+                    # Низкочастотный фильтр
                     # Параметры фильтра
 
-                    #cutoff = 15.0  # Граничная частота (Гц)
-                    #fs = 1000.0  # Частота дискретизации (Гц)
-                    #order = 4
-
-                    # Исходный сигнал (например, из ваших данных)
-                    # signal = ...
+                    # cutoff = 15.0  # Граничная частота (Гц)
+                    # fs = 1000.0  # Частота дискретизации (Гц)
+                    # order = 4
 
                     # Фильтрация
-                    #filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
+                    # filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
+
+                    #QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
+                    #ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), filtered_signal]).T, columns=['TimeStamp', 'ecg'])
+                    #output_signal = QRS_detector.solve(ecg)
+
+
 
                     #plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out, filtered_signal)
-
-
-
 
 
                     #plot_tompkins(pan_tompkins.bpass, pan_tompkins.der, pan_tompkins.sqr, pan_tompkins.mwin)
@@ -712,10 +639,69 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     #test_record_for_breaks(record)
 
 
-                #if (not (row[0] == 'NaN')):
-                #   selected_records.append(row[0])
 
 
+def ECG_to_RR_intervals_with_neurokit2(signal):
+    """ECG to RR intervals with neurokit2"""
+
+    # Preprocessing neurokit2, cleaned signal (baseline wander removal, hight pass filter)
+    ecg_cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate)
+
+    # R-peaks detection
+    r_peaks, _ = nk.ecg_peaks(ecg_cleaned, sampling_rate=sampling_rate)
+
+    # Getting indexes of R-peaks
+    peaks = _["ECG_R_Peaks"].astype(int)
+
+    # Check that the indices are within the signal range
+    if np.any(peaks >= len(signal)) or np.any(peaks < 0):
+        raise ValueError("Some R-wave indices are outside the signal range.")
+
+    print("Peaks type:", type(peaks))
+
+    # Additional: save to file
+    np.savetxt("nk_rr_peaks/peaks_{0}.txt".format(row[0]), peaks,
+               header="Peaks (s)", comments='', fmt="%.6f")
+
+    print("Peaks in milliseconds: ", peaks)
+    # Calculate R-R intervals (in milliseconds)
+    rr_intervals = np.diff(peaks)
+
+    # Calculation of R-R intervals
+    # rr_intervals = nk.ecg_interval(r_peaks, sampling_rate=sampling_rate)
+
+    # Output of R-R intervals
+    print("R-R интервалы (в милисекундах):", rr_intervals)
+
+    # Additional: save to file rr-intervals
+    np.savetxt("nk_rr_intervals/rr_intervals_{0}.txt".format(row[0]), rr_intervals, header="RR Intervals (s)",
+               comments='', fmt="%.6f")
+
+    # Saving the result
+    # rr_intervals.to_csv("nk_rr_intervals/rr_intervals_{0}.csv".format(row[0]), index=False)
+
+    # Plotting bandpassed signal
+    plt.figure(figsize=(20, 4), dpi=100)
+    plt.xticks(np.arange(0, len(ecg_cleaned) + 1, 150))
+    plt.plot(ecg_cleaned)
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("Cleaned signal")
+
+    # Plotting the R peak locations in ECG signal
+    plt.figure(figsize=(20, 4), dpi=100)
+    plt.xticks(np.arange(0, len(signal) + 1, 150))
+    plt.plot(signal, color='blue')
+    for p in peaks:
+        plt.scatter(p, signal[p], color='red', s=50, marker='*')
+    plt.xlabel('Samples')
+    plt.ylabel('MLIImV')
+    plt.title("R Peak Locations on not cleaned signal")
+
+
+#######################################################################################################################
+#################################### EXTRACTING RR INTERVALS ##########################################################
+#######################################################################################################################
 def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
     """BIO SPPY library for extracting RR-intervals from ECG signal
         input:
@@ -723,11 +709,15 @@ def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
             sampling_rate - sampling_rate
             Id - id of record
 
+        output:
+
+            r_peaks, rr_intervals - R peaks and RR intervals
+
     """
 
     # signal, mdata = storage.load_txt('./examples/ecg.txt')
 
-    # Додання 300 відліків зліва та справа
+    # Додання 500 відліків зліва та справа
     extended_signal = np.pad(signal, (500, 500), mode='edge')
     out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=False)
     r_peaks = out['rpeaks']  # Отримання індексів R-піків
@@ -747,6 +737,7 @@ def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
 
     return r_peaks, rr_intervals
 
+# Doesn't using
 def plot_R_peaks(picks, signal):
     # Plotting the R peak locations in ECG signal
     plt.figure(figsize=(20, 4), dpi=100)
@@ -877,11 +868,6 @@ def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, b
 
     #plt.plot(time, signal, label="Исходный сигнал", alpha=0.6)
 
-
-
-
-
-
     # Set labels and legends
     ax1.set_title("ECG baseline wander signal")
     ax1.set_ylabel("Amplitude (mV)")
@@ -929,6 +915,11 @@ def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, b
     ax3.callbacks.connect("xlim_changed", on_xlim_changed)
     # Show the interactive plot
     plt.show()
+    
+    
+######################################################################################################################
+######################################################################################################################
+######################################################################################################################
 
 def open_record_wfdb(id, min_point, max_point, remotely):
     """Open record with wfdb"""
@@ -1008,7 +999,7 @@ def open_record(id, min_point, max_point, remotely):
 
     #create_breaks_file(sequence_1, sequence_2)
     wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
-    #n = input()
+
 
     return [sequence_1, sequence_2]
 
@@ -2036,7 +2027,7 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    #read_ECGs_annotation_data(False, True)
+    read_ECGs_annotation_data(False, True)
 
 
     num_k_value = 50
