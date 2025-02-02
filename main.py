@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -176,38 +176,51 @@ def print_database():
 
 
 
-def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
-
-    """For the case when two ECG.
+def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_value=None):
+    
+    """Calculate higuchi method
+        
+        input:
+            ECG_1: dictionary with id's as keys and RR_intervals time series as values
+    For the case when two ECG.
         Input parameters:
         num_k_value - number of k values
-        k_max_value - value of Kmax"""
+        k_max_value - value of Kmax
+        """
 
 
-    dictionary_HFD_ECG_1 = {}
+    ECG_1_RR_intervals_HFD_dictionary = {}
     #dictionary_HFD_ECG_2 = {}
     
-    ages_dictionary = {}
+    id_ageRangeIndex_dict = {}
 
+    # Ідея - розраховувати k в залежності від довжини хвиль (дихальних і тп.)
 
-
-    for key in ECG_1.keys():
-        HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1[key]), opt=True, num_k=num_k_value,
+    # Calculate higuchi fractal dimension for RR-intervals time series
+    for id in ECG_1_RR_intervals.keys():
+        HFD_1 = HiguchiFractalDimension.hfd(np.array(ECG_1_RR_intervals[id]), opt=True, num_k=num_k_value,
                                           k_max=k_max_value)
 
-        dictionary_HFD_ECG_1[key] = HFD_1
+        ECG_1_RR_intervals_HFD_dictionary[id] = HFD_1
 
-    print(dictionary_HFD_ECG_1)
+    # Print HFD of RR-intervals time series of the first ECG
+    print(ECG_1_RR_intervals_HFD_dictionary)
 
-    ages_dictionary = extract_ages(ECG_1.keys())
-    print(ages_dictionary)
+    # Dictionary with id as key and age ranges as value.
+    id_ageRangeIndex_dict = extract_age_ranges_from_annotation_file(ECG_1_RR_intervals.keys(), is_remotely=False)
 
-    age_ranges_dictionary = {}
+    print(id_ageRangeIndex_dict)
 
-    for key in ages_dictionary.keys():
-        age_ranges_dictionary[key] = age_groups[ages_dictionary[key]]
 
-    write_HFD_calculated_values_to_csv(dictionary_HFD_ECG_1,ages_dictionary,age_ranges_dictionary)
+    # Convert dictionary with id as key and age range index as value to dictionary with id as key and age range as value
+    id_ageRange_dict = {}
+
+    for id in id_ageRangeIndex_dict.keys():
+        id_ageRange_dict[id] = age_groups[id_ageRangeIndex_dict[id]]
+    ####################################################################################################################
+
+    linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRangeIndex_dict)
+    write_HFD_calculated_values_to_csv(ECG_1_RR_intervals_HFD_dictionary,id_ageRangeIndex_dict,id_ageRange_dict)
 
 
     ##############################################################################################
@@ -216,9 +229,15 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
 
     # Dictionary with id's for each age category, for each age range list of id's
     age_category_ids_dictionary = get_ids_of_age_range_from_ages_dictionary(age_ranges_dictionary)
-    hfd_average_by_age_range = HFD_average_by_age_range(age_category_ids_dictionary, dictionary_HFD_ECG_1)
 
+    train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dictionary)
 
+    hfd_average_by_age_range = HFD_average_by_age_range(train_dataset, ECG_1_RR_intervals_HFD_dictionary)
+
+    for age_range in test_dataset.keys():
+        for id in test_dataset[age_range]:
+            age_category = find_biological_age(hfd_average_by_age_range, ECG_1_RR_intervals_HFD_dictionary[id])
+            print("Real age_range: {0}, fined age range: {1}".format(age_range, age_category))
 
     write_average_HFD_values_for_each_age_range(hfd_average_by_age_range)
 
@@ -233,7 +252,7 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
 
     """
     if (not math.isnan(HFD_1)):
-        dictionary_HFD_ECG_1[ecg.Id] = HFD_1
+        ECG_1_RR_intervals_HFD_dictionary[ecg.Id] = HFD_1
 
     if (not math.isnan(HFD_2)):
         dictionary_HFD_ECG_2[ecg.Id] = HFD_2"""
@@ -246,16 +265,16 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
     """
 
     # For testing
-    #dictionary_HFD_ECG_1.pop("0001")
+    #ECG_1_RR_intervals_HFD_dictionary.pop("0001")
     #dictionary_HFD_ECG_2.pop("0010")
 
     # Intersect of two sets
-    #keys = list(set(dictionary_HFD_ECG_1.keys()) & set(dictionary_HFD_ECG_2.keys()))
+    #keys = list(set(ECG_1_RR_intervals_HFD_dictionary.keys()) & set(dictionary_HFD_ECG_2.keys()))
 
-    """ages_dictionary = {}
+    """age_range_indexes = {}
     for key in keys:
-        dictionary_HFD_ECG_1_2[key] = [dictionary_HFD_ECG_1[key], dictionary_HFD_ECG_2[key]]
-        ages_dictionary[key] = age_groups[ecg.AgeGroup]
+        dictionary_HFD_ECG_1_2[key] = [ECG_1_RR_intervals_HFD_dictionary[key], dictionary_HFD_ECG_2[key]]
+        age_range_indexes[key] = age_groups[ecg.AgeGroup]
 
 
 
@@ -277,7 +296,7 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
     
     print(age_category_ids_dictionary)
     print(HFD_average_by_age_range)
-    #print(dictionary_HFD_ECG_1)
+    #print(ECG_1_RR_intervals_HFD_dictionary)
     #print(dictionary_HFD_ECG_2)
     #print(dictionary_HFD_ECG_1_2)"""
 
@@ -305,9 +324,9 @@ def calculate_higuchi(ECG_1, ECG_2=None, num_k_value=50, k_max_value=None):
     # HFD_croped = open_record(row[0], 300000)
 
     if ((not math.isnan(HFD_1)) and (not math.isnan(HFD_2))):
-        dictionary_HFD_ECG_1[row[0]] = HFD_1
+        ECG_1_RR_intervals_HFD_dictionary[row[0]] = HFD_1
         dictionary_HFD_ECG_2[row[0]] = HFD_2
-        ages_dictionary[row[0]] = age_groups[row[1]]
+        age_range_indexes[row[0]] = age_groups[row[1]]
 
 
 line_count += 1
@@ -325,16 +344,73 @@ with open('number_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
 
     """
 
-def get_ids_of_age_range_from_ages_dictionary(ages_dictionary):
+def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from sklearn.linear_model import LinearRegression
+
+    # Исходные данные
+    #id_ageRange_dict = {1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
+    #                    8: '8'}  # Ключи - индексы, значения - группы
+    #ECG_1_RR_intervals_HFD_dictionary = {1: 1.2, 2: 1.5, 3: 1.8, 4: 2.0, 5: 2.3, 6: 2.6, 7: 2.9, 8: 3.1}  # Значения HFD
+
+    """age_groups = {
+        '1': '18 - 19', '2': '20 - 24', '3': '25 - 29', '4': '30 - 34',
+        '5': '35 - 39', '6': '40 - 44', '7': '45 - 49', '8': '50 - 54',
+        '9': '55 - 59', '10': '60 - 64', '11': '65 - 69', '12': '70 - 74',
+        '13': '75 - 79', '14': '80 - 84', '15': '85 - 92'
+    }"""
+
+    # Функция для вычисления среднего возраста из диапазона
+    def get_average_age(group_key):
+        if group_key in age_groups:
+            age_range = age_groups[group_key]
+            min_age, max_age = map(int, age_range.split(" - "))
+            return (min_age + max_age) / 2
+        return None
+
+    # Преобразуем возрастные группы в средний возраст
+    X = np.array([get_average_age(id_ageRange_dict[key]) for key in sorted(id_ageRange_dict)]).reshape(-1, 1)
+    y = np.array([ECG_1_RR_intervals_HFD_dictionary[key] for key in sorted(ECG_1_RR_intervals_HFD_dictionary)])
+
+    # Обучаем линейную регрессию
+    model = LinearRegression()
+    model.fit(X, y)
+    y_pred = model.predict(X)
+
+    # Визуализация
+    plt.scatter(X, y, color='blue', label='Исходные данные')
+    plt.plot(X, y_pred, color='red', linewidth=2, label='Линейная регрессия')
+    plt.xlabel("Средний возраст")
+    plt.ylabel("ECG_1_RR_intervals_HFD")
+    plt.legend()
+    plt.show()
+
+    # Вывод коэффициентов
+    print(f'Коэффициент наклона (slope): {model.coef_[0]:.4f}')
+    print(f'Пересечение с осью Y (intercept): {model.intercept_:.4f}')
+
+
+def find_biological_age(hfd_average_by_age_range, hfd):
+    age_category = None
+    diff = 10000000
+    for age_range in hfd_average_by_age_range.keys():
+        if abs(hfd - hfd_average_by_age_range[age_range]) < diff:
+            diff = hfd - hfd_average_by_age_range[age_range]
+            age_category = age_range
+
+    return age_category
+
+def get_ids_of_age_range_from_ages_dictionary(age_range_indexes):
     """From dictionary with ages as keys and age ranges as values get new dictionary with
     age ranges as keys and respective list of id's"""
 
     # Dictionary with id's for each age category
     age_category_ids_dictionary = {}
 
-    for id in ages_dictionary.keys():
+    for id in age_range_indexes.keys():
 
-        age_category = ages_dictionary[id]
+        age_category = age_range_indexes[id]
 
         if age_category_ids_dictionary.keys().__contains__(age_category):
             age_category_ids_dictionary[age_category].append(id)
@@ -343,7 +419,7 @@ def get_ids_of_age_range_from_ages_dictionary(ages_dictionary):
 
     return age_category_ids_dictionary
 
-def HFD_average_by_age_range(age_category_ids_dictionary, dictionary_HFD_ECG_1):
+def HFD_average_by_age_range(age_category_ids_dictionary, ECG_1_RR_intervals_HFD_dictionary):
     """Calculate average HFD value by each age range"""
 
     HFD_average_by_age_range = {}
@@ -354,7 +430,7 @@ def HFD_average_by_age_range(age_category_ids_dictionary, dictionary_HFD_ECG_1):
         # HFD_2_average = 0
 
         for id in age_category_ids_dictionary[age_category]:
-            HFD_1_summ += dictionary_HFD_ECG_1[id]
+            HFD_1_summ += ECG_1_RR_intervals_HFD_dictionary[id]
             # HFD_2_average += dictionary_HFD_ECG_1_2[age_range_key][1]
 
         length_of_age_category_ids_list = len(age_category_ids_dictionary[age_category])
@@ -403,14 +479,24 @@ def sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids):
 
     return general, first_unique, second_unique
 
+
 #######################################################################################################################
 ############################################## OPENING RECORDS ########################################################
 #######################################################################################################################
 
-def extract_ages (keys, is_remotely=False):
-    """Extract ages from annotation"""
+def extract_age_ranges_from_annotation_file (ids, is_remotely=False):
+    """Extract age range indexes from annotation file
 
-    ages_dictionary = {}
+        input:
+            ids - indexes of records
+            is_remotely - load annotation file from the internet
+            
+        output:
+        
+            age_ranges_dictionary - dictionary with indexes as keys and age ranges as values
+    """
+
+    age_ranges_dictionary = {}
 
     # Check, if dataset is remotely located
     if is_remotely:
@@ -421,20 +507,23 @@ def extract_ages (keys, is_remotely=False):
     with open(path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
 
-        # Получаем первую строку для инициализации DATABASE_ATTRIBUTES
+        # Get first raw with attributes
         first_row = next(csv_reader)
 
         # Setting counter for first row
         line_count = 0
 
-        # Обрабатываем оставшиеся строки
+        # We are processing the remaining rows
         for row in csv_reader:
             line_count += 1
+            
+            # Row[0] - id of record, row[1] - age range in index form
+            if row[0] in ids:
+                age_ranges_dictionary[row[0]] = row[1]
 
-            if row[0] in keys:
-                ages_dictionary[row[0]] = row[1]
+    return age_ranges_dictionary
 
-    return ages_dictionary
+
 def read_ECGs_annotation_data(is_remotely, except_breaked):
 
         """ Open csv info file, print header and information for each record.
@@ -1277,7 +1366,7 @@ def save_to_csv(id, sequences, filename):
 
         print(AGE_CATEGORIES_WITH_IDS)
         print(HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP)
-        #print(dictionary_HFD_ECG_1)
+        #print(ECG_1_RR_intervals_HFD_dictionary)
         #print(dictionary_HFD_ECG_2)
         #print(dictionary_HFD_ECG_1_2)
 
@@ -1308,7 +1397,7 @@ def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group
             spamwriter.writerow([key, ecg_count_per_each_age_group[key]])
 
 def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group):
-    with open('output/HFD_average_of_ECG_per_age_range_2.csv', 'w', newline='') as csvfile:
+    with open('output/HFD_average_of_ECG_per_age_range_3.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
@@ -1817,9 +1906,57 @@ def preprocess_rr_intervals(rr_intervals, mode="fixed_count", count=440, duratio
     else:
         raise ValueError("Неверный режим. Используйте 'fixed_count' или 'fixed_duration'.")
 
+def split_rr_intervals_on_train_and_test_datasets(age_ranges_ids_dictionary):
+
+    """Split age_ranges_id's dictionary for train and test datasets"""
+    """    
+    # Исходные данные
+    #data = {
+    #    1: [(1, 2), (3, 4)],
+    #    2: [(5, 6), (7, 8)],
+    #    3: [(9, 10), (11, 12)],
+    #    4: [(13, 14), (15, 16)]
+    #}
+
+    # Разделение ключей (идентификаторов)
+    train_keys, test_keys = train_test_split(list(data.keys()), test_size=0.1, random_state=42)
+
+    # Создание новых словарей
+    train_data = {key: data[key] for key in train_keys}
+    test_data = {key :data[key] for key in test_keys}
+
+    print("Обучающая выборка:", train_data)
+    print("Тестовая выборка:", test_data)
+    """
+
+    from sklearn.model_selection import train_test_split
+    data = age_ranges_ids_dictionary
+    # Исходные данные: возрастные диапазоны -> списки идентификаторов
+    """
+    data = {
+        "18-25": [101, 102, 103, 104, 105],
+        "26-35": [201, 202, 203, 204, 205, 206],
+        "36-45": [301, 302, 303, 304],
+        "46-60": [401, 402, 403, 404, 405]
+    }"""
 
 
+    train_data = {}
+    test_data = {}
 
+    # Разделяем внутри каждого возрастного диапазона
+    for age_range, ids in data.items():
+        #Split list of id's of each age_range in proportion 0.9 / 0.1 train, test size
+        train_ids, test_ids = train_test_split(ids, test_size=0.1, random_state=42)
+
+        # For every age category list of id's
+        train_data[age_range] = train_ids
+        test_data[age_range] = test_ids
+
+    print("Обучающая выборка:", train_data)
+    print("Тестовая выборка:", test_data)
+
+    return train_data, test_data
 
 if __name__ == '__main__':
 
@@ -1899,24 +2036,28 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    read_ECGs_annotation_data(False, True)
+    #read_ECGs_annotation_data(False, True)
 
-    """
+
     num_k_value = 50
     k_max_value = None
 
-
+    # Get list of files with rr_intervals
     files = list_files_with_rr_intervals()
+
+    # Extract RR time series from files
     rr_time_series_dictionary = extract_from_files_rr_time_series(files)
+
     find_minimum_count(rr_time_series_dictionary)
     check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, 300000)
 
     # 440 min count, all > 5 min
     preprocessed_dictionary = {}
 
+    # Preprocess each rr_intervals record
     for key in rr_time_series_dictionary.keys():
         preprocessed_dictionary[key] = preprocess_rr_intervals(rr_time_series_dictionary[key])
-    """
+
 
 
     #check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary)
