@@ -206,20 +206,51 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
     # Print HFD of RR-intervals time series of the first ECG
     print(ECG_1_RR_intervals_HFD_dictionary)
 
-    # Dictionary with id as key and age ranges as value.
+    # Dictionary with id's as keys and sex index as sex
+    sex_dict=get_sex_for_each_id(ECG_1_RR_intervals)
+
+    # Разделение на два словаря
+    male_dict = {k: v for k, v in sex_dict.items() if v == '1'}
+    female_dict = {k: v for k, v in sex_dict.items() if v == '0'}
+
+    print("Мужчины:", male_dict)
+    print("Женщины:", female_dict)
+
+
+
+    #print(sex_dict)
+
+    # Dictionary with id (as key) and age range index (as value).
     id_ageRangeIndex_dict = extract_age_ranges_from_annotation_file(ECG_1_RR_intervals.keys(), is_remotely=False)
 
     print(id_ageRangeIndex_dict)
 
+    # Фильтруем только мужчин с возрастными диапазонами
+    male_age_dict = {k: id_ageRangeIndex_dict[k] for k in male_dict if k in id_ageRangeIndex_dict}
 
-    # Convert dictionary with id as key and age range index as value to dictionary with id as key and age range as value
-    id_ageRange_dict = {}
+    print(male_age_dict)
 
-    for id in id_ageRangeIndex_dict.keys():
-        id_ageRange_dict[id] = age_groups[id_ageRangeIndex_dict[id]]
-    ####################################################################################################################
+    female_age_dict = {k: id_ageRangeIndex_dict[k] for k in female_dict if k in id_ageRangeIndex_dict}
 
-    linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRangeIndex_dict)
+    print(female_age_dict)
+
+    # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
+    filtered_ECG_dict_male = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in male_age_dict if
+                         k in ECG_1_RR_intervals_HFD_dictionary}
+
+    linear_regression(filtered_ECG_dict_male, male_age_dict)
+
+    # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
+    filtered_ECG_dict_female = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in female_age_dict if
+                         k in ECG_1_RR_intervals_HFD_dictionary}
+    linear_regression(filtered_ECG_dict_female, female_age_dict)
+
+    # Convert dictionary with id (as key) and age range index (as value) to dictionary with id (as key) and age range
+    # (as value).
+    id_ageRange_dict = convert_age_range_index_to_age_range_dictionary(id_ageRangeIndex_dict)
+
+
+
     write_HFD_calculated_values_to_csv(ECG_1_RR_intervals_HFD_dictionary,id_ageRangeIndex_dict,id_ageRange_dict)
 
 
@@ -227,10 +258,13 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
     ##############################################################################################
     ##############################################################################################
 
-    # Dictionary with id's for each age category, for each age range list of id's
-    age_category_ids_dictionary = get_ids_of_age_range_from_ages_dictionary(id_ageRange_dict)
+    # Dictionary with list of id's (value) for each age category (key)
+    age_category_ids_dict = get_ids_of_age_range_from_ages_dictionary(id_ageRange_dict)
 
-    train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dictionary)
+
+    train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dict)
+
+
 
     hfd_average_by_age_range = HFD_average_by_age_range(train_dataset, ECG_1_RR_intervals_HFD_dictionary)
 
@@ -284,7 +318,7 @@ def calculate_higuchi(ECG_1_RR_intervals, ECG_2=None, num_k_value=50, k_max_valu
     """
     """
     
-    print(age_category_ids_dictionary)
+    print(age_category_ids_dict)
     print(HFD_average_by_age_range)
     #print(ECG_1_RR_intervals_HFD_dictionary)
     #print(dictionary_HFD_ECG_2)
@@ -329,6 +363,18 @@ with open('number_of_ECG_per_age_range.csv', 'w', newline='') as csvfile:
         spamwriter.writerow([key, ECG_per_age_group_dictionary[key]])
 
     """
+
+def convert_age_range_index_to_age_range_dictionary(id_ageRangeIndex_dict):
+    """
+    Convert dictionary with id (as key) and age range index (as value) to dictionary with id (as key) and age range
+    (as value).
+    """
+    id_ageRange_dict = {}
+
+    for id in id_ageRangeIndex_dict:
+        id_ageRange_dict[id] = age_groups[id_ageRangeIndex_dict[id]]
+
+    return id_ageRange_dict
 
 def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
     import numpy as np
@@ -392,34 +438,34 @@ def get_ids_of_age_range_from_ages_dictionary(age_range_indexes):
     age ranges as keys and respective list of id's"""
 
     # Dictionary with id's for each age category
-    age_category_ids_dictionary = {}
+    age_category_ids_dict = {}
 
     for id in age_range_indexes.keys():
 
         age_category = age_range_indexes[id]
 
-        if age_category_ids_dictionary.keys().__contains__(age_category):
-            age_category_ids_dictionary[age_category].append(id)
+        if age_category_ids_dict.keys().__contains__(age_category):
+            age_category_ids_dict[age_category].append(id)
         else:
-            age_category_ids_dictionary[age_category] = [id]
+            age_category_ids_dict[age_category] = [id]
 
-    return age_category_ids_dictionary
+    return age_category_ids_dict
 
-def HFD_average_by_age_range(age_category_ids_dictionary, ECG_1_RR_intervals_HFD_dictionary):
+def HFD_average_by_age_range(age_category_ids_dict, ECG_1_RR_intervals_HFD_dictionary):
     """Calculate average HFD value by each age range"""
 
     HFD_average_by_age_range = {}
 
-    for age_category in age_category_ids_dictionary.keys():
+    for age_category in age_category_ids_dict.keys():
 
         HFD_1_summ = 0
         # HFD_2_average = 0
 
-        for id in age_category_ids_dictionary[age_category]:
+        for id in age_category_ids_dict[age_category]:
             HFD_1_summ += ECG_1_RR_intervals_HFD_dictionary[id]
             # HFD_2_average += dictionary_HFD_ECG_1_2[age_range_key][1]
 
-        length_of_age_category_ids_list = len(age_category_ids_dictionary[age_category])
+        length_of_age_category_ids_list = len(age_category_ids_dict[age_category])
         HFD_average_by_age_range[age_category] = HFD_1_summ / length_of_age_category_ids_list
 
     return HFD_average_by_age_range
@@ -514,6 +560,63 @@ def extract_age_ranges_from_annotation_file (ids, is_remotely=False):
 
     return age_ranges_dictionary
 
+
+def get_sex_for_each_id(ids, is_remotely=False):
+    """Get id's list for each sex
+
+        input:
+            is_remotely - load annotation file from the internet
+
+        output:
+
+            lists of id's for men and women
+    """
+
+    sex_dictionary = {}
+
+    # Check, if dataset is remotely located
+    if is_remotely:
+        path = csv_info_file
+    else:
+        path = path_to_dataset_folder + '/' + csv_info_file
+
+    with open(path) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+
+        # Get first raw with attributes
+        first_row = next(csv_reader)
+
+        # Setting counter for first row
+        line_count = 0
+
+        # We are processing the remaining rows
+        for row in csv_reader:
+            line_count += 1
+
+            # Row[0] - id of record, row[1] - age range in index form
+            if row[0] in ids:
+                sex_dictionary[row[0]] = row[2]
+
+
+    return sex_dictionary
+
+def get_ids_of_sex_from_sexes_dictionary(sex_dictionary):
+    """From dictionary with ages as keys and age ranges as values get new dictionary with
+    age ranges as keys and respective list of id's"""
+
+    # Dictionary with id's for each age category
+    sex_ids_dictionary = {}
+
+    for id in sex_dictionary.keys():
+
+        sex = sex_dictionary[id]
+
+        if sex_ids_dictionary.keys().__contains__(sex):
+            sex_ids_dictionary[sex].append(id)
+        else:
+            sex_ids_dictionary[sex] = [id]
+
+    return sex_ids_dictionary
 
 def read_ECGs_annotation_data(is_remotely, except_breaked):
 
@@ -2027,7 +2130,7 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    read_ECGs_annotation_data(False, True)
+    #read_ECGs_annotation_data(False, True)
 
 
     num_k_value = 50
