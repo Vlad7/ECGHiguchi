@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -212,6 +212,7 @@ def get_age_ranges_for_male_and_female(ECG_RR_intervals_keys, male_ids_list, fem
 
     return male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict
 
+
 def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_dictionary):
 
     male_ids_list, female_ids_list = get_information_about_sex(ECG_RR_intervals.keys())
@@ -220,49 +221,97 @@ def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_diction
         get_age_ranges_for_male_and_female(ECG_RR_intervals.keys(), male_ids_list, female_ids_list))
 
     # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
-    male_HFD_dict_ = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in male_ids_list if
+    male_HFD_dict = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in male_ids_list if
                               k in ECG_1_RR_intervals_HFD_dictionary}
 
     # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
     female_HFD_dict = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in female_ids_list if
                        k in ECG_1_RR_intervals_HFD_dictionary}
 
-    linear_regression(female_HFD_dict, female_id_ageRangeIndex_dict)
-    linear_regression(male_HFD_dict_, male_id_ageRangeIndex_dict)
+    print("Female")
+    female_slope, female_intercept = linear_regression(female_HFD_dict, female_id_ageRangeIndex_dict)
+    print("Male")
+    male_slope, male_intercept = linear_regression(male_HFD_dict, male_id_ageRangeIndex_dict)
 
-
-
-
-
-
-
-
-
-
-
+   
+   
+   
+   
     # Convert dictionary with id (as key) and age range index (as value) to dictionary with id (as key) and age range
     # (as value).
-    id_ageRange_dict = convert_age_range_index_to_age_range_dictionary(id_ageRangeIndex_dict)
+    male_id_ageRange_dict = convert_age_range_index_to_age_range_dictionary(male_id_ageRangeIndex_dict)
+    female_id_ageRange_dict = convert_age_range_index_to_age_range_dictionary(female_id_ageRangeIndex_dict)
 
-    write_HFD_calculated_values_to_csv(ECG_1_RR_intervals_HFD_dictionary, id_ageRangeIndex_dict, id_ageRange_dict)
+    write_HFD_calculated_values_to_csv('male', ECG_1_RR_intervals_HFD_dictionary, male_id_ageRangeIndex_dict, male_id_ageRange_dict)
+    write_HFD_calculated_values_to_csv('female', ECG_1_RR_intervals_HFD_dictionary, female_id_ageRangeIndex_dict, female_id_ageRange_dict)
 
-    ##############################################################################################
-    ##############################################################################################
-    ##############################################################################################
+
 
     # Dictionary with list of id's (value) for each age category (key)
-    age_category_ids_dict = get_ids_of_age_range_from_ages_dictionary(id_ageRange_dict)
+    male_age_category_ids_dict = get_ids_of_age_range_from_ageRange_dictionary(male_id_ageRange_dict)
+    female_age_category_ids_dict = get_ids_of_age_range_from_ageRange_dictionary(female_id_ageRange_dict)
 
-    train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dict)
+    ##############################################################################################
+    ##############################################################################################
+    ##############################################################################################
 
-    hfd_average_by_age_range = HFD_average_by_age_range(train_dataset, ECG_1_RR_intervals_HFD_dictionary)
+    find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
+                        male_slope, male_intercept, female_slope, female_intercept)
 
-    for age_range in test_dataset.keys():
-        for id in test_dataset[age_range]:
-            age_category = find_biological_age(hfd_average_by_age_range, ECG_1_RR_intervals_HFD_dictionary[id])
+
+
+
+def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
+                        male_slope, male_intercept, female_slope, female_intercept):
+
+    print("Male")
+    male_train_dataset, male_test_dataset = (
+        split_rr_intervals_on_train_and_test_datasets(male_age_category_ids_dict))
+
+    print("Female")
+    female_train_dataset, female_test_dataset = split_rr_intervals_on_train_and_test_datasets(
+        female_age_category_ids_dict)
+
+    male_hfd_average_by_age_range = HFD_average_by_age_range(male_train_dataset, male_HFD_dict)
+    female_hfd_average_by_age_range = HFD_average_by_age_range(female_test_dataset, female_HFD_dict)
+
+    write_average_HFD_values_for_each_age_range('male', male_hfd_average_by_age_range)
+    write_average_HFD_values_for_each_age_range('female', male_hfd_average_by_age_range)
+
+    print("Average method!\n")
+    print("Male")
+    for age_range in male_test_dataset:
+        for id in male_test_dataset[age_range]:
+            age_category = estimate_biological_age(male_hfd_average_by_age_range, male_HFD_dict[id])
             print("Real age_range: {0}, fined age range: {1}".format(age_range, age_category))
 
-    write_average_HFD_values_for_each_age_range(hfd_average_by_age_range)
+    print("Female")
+    for age_range in male_test_dataset:
+        for id in male_test_dataset[age_range]:
+            age_category = estimate_biological_age(male_hfd_average_by_age_range, male_HFD_dict[id])
+            print("Real age_range: {0}, fined age range: {1}".format(age_range, age_category))
+
+    print("Linear regression method!\n")
+
+    print("Male")
+    # Список ошибок
+    errors = []
+
+    for age_range in male_test_dataset:
+        for id in male_test_dataset[age_range]:
+            number_age_category = int(estimate_biological_age_by_regression_line(male_HFD_dict[id], male_slope, male_intercept))
+            category = get_age_category_from_number(number_age_category)
+
+            # Присутствует систематическая ошибка!
+
+            # Преобразуем категории в числовые индексы
+            real_age_num = get_average_age(age_range)
+            pred_age_num = get_average_age(category)
+
+            # Добавляем квадрат ошибки
+            errors.append((real_age_num - pred_age_num) ** 2)
+
+            print("Real age_range: {0}, finded age range: {1}".format(age_range, category))
 
 
 
@@ -270,6 +319,33 @@ def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_diction
 
 
 
+
+
+
+    # Вычисляем среднеквадратическую ошибку
+    mse = np.mean(errors)
+    print(f"\nMean Squared Error (MSE): {mse:.4f}")
+
+def get_average_age(age_range):
+
+
+        min_age, max_age = map(int, age_range.split(" - "))
+        return (min_age + max_age) / 2
+
+
+def get_age_category_from_number(number):
+    number_series = pd.Series([number])
+
+    # Границы возрастных групп
+    bins = [0, 19, 24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 84, 92, float('inf')]
+    labels = ['18 - 19', '20 - 24', '25 - 29', '30 - 34', '35 - 39',
+              '40 - 44', '45 - 49', '50 - 54', '55 - 59', '60 - 64',
+              '65 - 69', '70 - 74', '75 - 79', '80 - 84', '85 - 92', 'none']
+
+    # Преобразование
+    age_category  = pd.cut(number_series, bins=bins, labels=labels, right=True, include_lowest=True)
+
+    return age_category.iloc[0]
 
 
 def calculate_higuchi(ECG_RR_intervals, num_k_value=50, k_max_value=None):
@@ -455,18 +531,36 @@ def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
     print(f'Коэффициент наклона (slope): {model.coef_[0]:.4f}')
     print(f'Пересечение с осью Y (intercept): {model.intercept_:.4f}')
 
+    return model.coef_[0], model.intercept_
 
-def find_biological_age(hfd_average_by_age_range, hfd):
+
+def estimate_biological_age(hfd_average_by_age_range, hfd):
+    """Estimate biological age by the nearest method"""
     age_category = None
     diff = 10000000
-    for age_range in hfd_average_by_age_range.keys():
-        if abs(hfd - hfd_average_by_age_range[age_range]) < diff:
-            diff = hfd - hfd_average_by_age_range[age_range]
+    for age_range in hfd_average_by_age_range:
+        dif = abs(hfd - hfd_average_by_age_range[age_range])
+        if dif < diff:
+            diff = dif
             age_category = age_range
 
     return age_category
 
-def get_ids_of_age_range_from_ages_dictionary(age_range_indexes):
+def estimate_biological_age_by_regression_line(hfd, slope, intercept):
+
+    age = (hfd - intercept) / slope
+
+    if age < 18:
+        age = 18
+    if age > 92:
+        age = 92
+
+    return (age)
+
+
+
+
+def get_ids_of_age_range_from_ageRange_dictionary(age_range_indexes):
     """From dictionary with ages as keys and age ranges as values get new dictionary with
     age ranges as keys and respective list of id's"""
 
@@ -1500,14 +1594,14 @@ def save_to_csv(id, sequences, filename):
         #RECORD.print_database()
 """
 
-def write_HFD_calculated_values_to_csv(hfd_of_ecg_1, age_indexes_for_id, age_ranges_for_id):
+def write_HFD_calculated_values_to_csv(sex, hfd_of_ecg_1, age_indexes_for_id, age_ranges_for_id):
     # ECG 1 and 2 simulationusly
 
-    with open('output/HFD_calculated.csv', 'w', newline='') as csvfile:
+    with open('output/{0}_HFD_calculated.csv'.format(sex), 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-        for key in hfd_of_ecg_1.keys():
+        for key in age_indexes_for_id.keys():
             spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1[key])])
 
         """, RECORD.DATABASE[type_of_ecg_cut][key].Sex,
@@ -1523,8 +1617,8 @@ def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group
         for key in ecg_count_per_each_age_group.keys():
             spamwriter.writerow([key, ecg_count_per_each_age_group[key]])
 
-def write_average_HFD_values_for_each_age_range(higuchi_average_per_each_age_group):
-    with open('output/HFD_average_of_ECG_per_age_range_3.csv', 'w', newline='') as csvfile:
+def write_average_HFD_values_for_each_age_range(sex, higuchi_average_per_each_age_group):
+    with open('output/{0}_HFD_average_of_ECG_per_age_range_3.csv'.format(sex), 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
@@ -2164,6 +2258,8 @@ if __name__ == '__main__':
     ############################################## !!!!!!!!!!!! ######################################################
 
     #read_ECGs_annotation_data(False, True)
+
+
 
 
     num_k_value = 50
