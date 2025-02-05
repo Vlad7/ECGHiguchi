@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -313,9 +313,20 @@ def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict
 
             print("Real age_range: {0}, finded age range: {1}".format(age_range, category))
 
+            # Count number of ECG's with both HFD values per each age group
 
-
-
+    MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP = {}
+    FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP = {}
+    for age_category in male_age_category_ids_dict:
+        MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP[age_category] = len(male_age_category_ids_dict[age_category])
+        #if (RECORDS_COUNT_PER_EACH_AGE_GROUP.keys().__contains__(age_groups[row[1]])):
+        #    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] += 1
+        #else:
+        #    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] = 1
+    for age_category in female_age_category_ids_dict:
+        FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP[age_category] = len(male_age_category_ids_dict[age_category])
+    write_number_of_ECGs_per_age_range_for_both_HFD('male', MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP)
+    write_number_of_ECGs_per_age_range_for_both_HFD('female', FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP)
 
 
 
@@ -1390,7 +1401,7 @@ def save_to_csv(id, sequences, filename):
 
         HFD_OF_ECG_1_AND_2 = {}
         AGE_RANGES_FOR_IDS_OF_BOTH_HFD_VALUES = {}
-        ECG_COUNT_PER_EACH_AGE_GROUP = {}
+        
         HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP = {}
         AGE_INDEX_FOR_IDS_OF_BOTH_HFD_VALUES = {}   # ???
 
@@ -1525,13 +1536,7 @@ def save_to_csv(id, sequences, filename):
                             BMIS_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = row[3]
                             LENGTH_FOR_IDS_OF_BOTH_HFD_VALUES[row[0]] = row[4]
 
-                            # Count number of ECG's with both HFD values per each age group
-
-                            if (ECG_COUNT_PER_EACH_AGE_GROUP.keys().__contains__(age_groups[row[1]])):
-                                ECG_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] += 1
-                            else:
-                                ECG_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] = 1
-
+                            
                         if(line_count>10000):
                             break
 
@@ -1581,8 +1586,7 @@ def save_to_csv(id, sequences, filename):
 
             #################################################################################################################
             #################################################################################################################
-
-        write_number_of_ECGs_per_age_range_for_both_HFD(ECG_COUNT_PER_EACH_AGE_GROUP, cut_method)
+       
         write_average_HFD_values_for_each_age_range(HIGUCHI_AVERAGE_PER_EACH_AGE_GROUP, cut_method)
 
         print(AGE_CATEGORIES_WITH_IDS)
@@ -1609,14 +1613,22 @@ def write_HFD_calculated_values_to_csv(sex, hfd_of_ecg_1, age_indexes_for_id, ag
 
 
 
-def write_number_of_ECGs_per_age_range_for_both_HFD(ecg_count_per_each_age_group, type_of_ecg_cut):
+def write_number_of_ECGs_per_age_range_for_both_HFD(sex, ecg_count_per_each_age_group):
+    with open('output/number_of_ECGs_per_each_age_range_{0}.csv'.format(sex), 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=';',
+                                    quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+        for age_group in ecg_count_per_each_age_group.keys():
+            spamwriter.writerow([age_group, ecg_count_per_each_age_group[age_group]])
+"""            
+def write_number_of_ECGs_per_age_range_for_both_HFD(sex, ecg_count_per_each_age_group, type_of_ecg_cut):
     with open('number_of_ECGs_per_each_age_range_' + type_of_ecg_cut.name + '_cut.csv', 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
         for key in ecg_count_per_each_age_group.keys():
             spamwriter.writerow([key, ecg_count_per_each_age_group[key]])
-
+"""
 def write_average_HFD_values_for_each_age_range(sex, higuchi_average_per_each_age_group):
     with open('output/{0}_HFD_average_of_ECG_per_age_range_3.csv'.format(sex), 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
