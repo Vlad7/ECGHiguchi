@@ -33,7 +33,7 @@ import bwr
 
 import bwr
 #import nbimporter
-import pan_tompkins
+import pan_tompkins as pt
 
 import neurokit2 as nk
 
@@ -804,7 +804,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 if (row[0] in breaked_first_ecg):
                     continue
 
-                # 780 - 800
+                # 780 - 800; 1081 <
                 if (line_count < 1081):
                     continue
 
@@ -831,6 +831,11 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
                     r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
+                    QRS_detector = pt.Pan_Tompkins_QRS()
+                    ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
+                    output_singal = QRS_detector.solve(ecg)
+
+                    plot_tompkins(pt.bpass, pt.der, pt.sqr, pt.mwin)
                     #plot_R_peaks(r_peaks, signal)
 
 
@@ -852,15 +857,19 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # Remove baseline from original signal
                     #ecg_out = (signal - baseline)
 
+                    #cutoff = 15.0  # Граничная частота (Гц)
+                    #fs = 1000.0  # Частота дискретизации (Гц)
+                    #order = 4
+
+                    # Фильтрация
+                    #filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
+
+                    #plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, baseline, ecg_out,
+                    #                                                                   filtered_signal)
                     # Низкочастотный фильтр
                     # Параметры фильтра
 
-                    # cutoff = 15.0  # Граничная частота (Гц)
-                    # fs = 1000.0  # Частота дискретизации (Гц)
-                    # order = 4
 
-                    # Фильтрация
-                    # filtered_signal = butter_lowpass_filter(ecg_out, cutoff, fs, order)
 
                     #QRS_detector = pan_tompkins.Pan_Tompkins_QRS()
                     #ecg = pd.DataFrame(np.array([list(range(len(ecg_out))), filtered_signal]).T, columns=['TimeStamp', 'ecg'])
@@ -1104,7 +1113,7 @@ def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, b
     ax1.plot(signal, "b-", label="signal")
     ax1.plot(baseline, "r-", label="baseline")
     ax2.plot(ecg_out, "b-", label="signal - baseline")
-    ax3.plot(low_pass_filtered, label="Фильтрованный сигнал", linewidth=2)
+    ax3.plot(low_pass_filtered, label="filtered signal", linewidth=2)
     # Визуализация
 
     #plt.plot(time, signal, label="Исходный сигнал", alpha=0.6)
@@ -1117,9 +1126,9 @@ def plot_simulationusly_baseline_wander_without_it_and_low_pass_filter(signal, b
     ax2.set_ylabel("Amplitude (mV)")
     ax2.legend()
 
-    ax3.set_xlabel("Time (seconds)")
-    ax3.set_ylabel("Амплитуда")
-    ax3.set_title("Удаление шума низкочастотным фильтром")
+    ax3.set_xlabel("Time (ms)")
+    ax3.set_ylabel("Amplitude (mV)")
+    ax3.set_title("Removing noise with a low-pass filter")
     ax3.legend()
     # Enable grid
     ax1.grid()
@@ -1238,9 +1247,26 @@ def open_record(id, min_point, max_point, remotely):
     print("Length of second ECG with id {0}: {1}".format(id, str(len(sequence_2))))
     #print(sequence)
 
-    #create_breaks_file(sequence_1, sequence_2)
-    wfdb.plot_wfdb(record, title='Record ' + id + ' from Physionet Autonomic ECG')
+    create_breaks_file(sequence_1, sequence_2)
+    #wfdb.plot_wfdb(record, channels=[0], title='Record ' + id + ' from Physionet Autonomic ECG')
 
+    # Проверяем, есть ли сигнал
+    if record.p_signal is not None:
+        # Получаем временные метки в миллисекундах
+        fs = record.fs  # Частота дискретизации
+        num_samples = record.p_signal.shape[0]
+        time_ms = [(i / fs) * 1000 for i in range(num_samples)]  # Переводим в миллисекунды
+
+        # Рисуем сигнал вручную
+        plt.figure(figsize=(10, 4))
+        plt.plot(time_ms, record.p_signal[:, 0])  # Только первый канал
+        plt.xlabel("Time (ms)")
+        plt.ylabel("Amplitude (mV)")
+        plt.title("ECG signal")
+        #plt.grid()
+        plt.show()
+    else:
+        print("Ошибка: В файле отсутствует сигнал!")
 
     return [sequence_1, sequence_2]
 
@@ -1332,6 +1358,7 @@ def create_breaks_file(sequence_1, sequence_2):
     print(consecutive_breaks1)
     print(consecutive_breaks2)
 
+    """
     if len(consecutive_breaks1) > 0 or len(consecutive_breaks2) > 0:
         f.write(id)
         f.write("\n")
@@ -1368,7 +1395,7 @@ def create_breaks_file(sequence_1, sequence_2):
         f.write("\n")
         f.write("\n")
     f.close()
-
+    """
     
 ######################################################################################################################
 ######################################################################################################################
@@ -2269,7 +2296,7 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    #read_ECGs_annotation_data(False, True)
+    read_ECGs_annotation_data(False, True)
 
 
 
@@ -2324,9 +2351,9 @@ if __name__ == '__main__':
         plt.show()
     """
 
-    dict = calculate_higuchi(preprocessed_dictionary)
+    #dict = calculate_higuchi(preprocessed_dictionary)
     #get_information_about_sex(preprocessed_dictionary.keys())
-    calculate_linear_regression(preprocessed_dictionary, dict)
+    #calculate_linear_regression(preprocessed_dictionary, dict)
 
     """
     #test_records_for_breaks()
