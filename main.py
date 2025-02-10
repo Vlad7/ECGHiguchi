@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -805,7 +805,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     continue
 
                 # 780 - 800; 1081 <
-                if (line_count < 1081):
+                if (line_count != 1083):
                     continue
 
                 # If Id is not available
@@ -831,11 +831,11 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
                     r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
-                    QRS_detector = pt.Pan_Tompkins_QRS()
-                    ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
-                    output_singal = QRS_detector.solve(ecg)
+                    #QRS_detector = pt.Pan_Tompkins_QRS()
+                    #ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
+                    #output_singal = QRS_detector.solve(ecg)
 
-                    plot_tompkins(pt.bpass, pt.der, pt.sqr, pt.mwin)
+                    #plot_tompkins(pt.bpass, pt.der, pt.sqr, pt.mwin)
                     #plot_R_peaks(r_peaks, signal)
 
 
@@ -2310,6 +2310,27 @@ if __name__ == '__main__':
     # Extract RR time series from files
     rr_time_series_dictionary = extract_from_files_rr_time_series(files)
 
+    # Извлекаем RR-интервалы
+    rr_intervals = rr_time_series_dictionary['1083']
+
+    # Для графика создадим массив с метками времени, который соответствует каждому интервалу
+    # Так как частота дискретизации 1000 Гц, то временная ось будет с шагом 1 мс
+    sampling_rate = 1000
+    print(len(rr_intervals))
+    time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
+    print(time_axis)
+    # Строим график
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_axis, rr_intervals, marker='o', color='b', linestyle='-', label='RR-intervals')
+    plt.title('RR intervals chart')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('RR-interval (ms)')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+
+    """
     find_minimum_count(rr_time_series_dictionary)
     check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, 300000)
 
@@ -2319,7 +2340,7 @@ if __name__ == '__main__':
     # Preprocess each rr_intervals record
     for key in rr_time_series_dictionary.keys():
         preprocessed_dictionary[key] = preprocess_rr_intervals(rr_time_series_dictionary[key])
-
+    """
 
 
     #check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary)
@@ -2366,12 +2387,13 @@ if __name__ == '__main__':
     sequences = [DATABASE['0001'].ECG_1, DATABASE['0001'].ECG_2]
     if sequences is not math.nan:
         save_to_csv(record_id, sequences, f"ecg_{record_id}.csv")
+    
     """
 
-
+    """
     print_database_attributes()
     print_database()
-    
+    """
     #print[((RECORD)DATABASE[0]).__str__()]
 
 
