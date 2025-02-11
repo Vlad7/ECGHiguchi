@@ -829,7 +829,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # Частота дискретизації
                     sampling_rate = 1000
 
-                    r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
+                    #r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
                     #QRS_detector = pt.Pan_Tompkins_QRS()
                     #ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
@@ -2313,18 +2313,40 @@ if __name__ == '__main__':
     # Извлекаем RR-интервалы
     rr_intervals = rr_time_series_dictionary['1083']
 
+    print(rr_intervals)
+
+    # Создаём массив накопленного времени
+    cumulative_time = np.cumsum(rr_intervals)  # массив накопленного времени (в мс)
+
+    print(cumulative_time)
+
+    # Определяем индексы RR-интервалов в диапазоне 40-52 секунды (40000-52000 мс)
+    start_idx = np.searchsorted(cumulative_time, 40000)   # первый индекс
+    end_idx = np.searchsorted(cumulative_time, 54000)  # последний индекс
+    # Отбираем данные для построения графика
+    filtered_rr = rr_intervals[start_idx:end_idx]
+    filtered_time = cumulative_time[start_idx:end_idx]
+    #print(filtered_time)
+
+    # Создаём ось X (по номеру R-R)
+    filtered_numbers = list(range(start_idx + 1, end_idx + 1))
+    print(filtered_numbers)
     # Для графика создадим массив с метками времени, который соответствует каждому интервалу
     # Так как частота дискретизации 1000 Гц, то временная ось будет с шагом 1 мс
     sampling_rate = 1000
     print(len(rr_intervals))
-    time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
-    print(time_axis)
+    #time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
+    number_axis = [i + 1 for i in range(len(rr_intervals))]
+    print(filtered_numbers)
+    #print(number_axis)
     # Строим график
     plt.figure(figsize=(10, 6))
-    plt.plot(time_axis, rr_intervals, marker='o', color='b', linestyle='-', label='RR-intervals')
-    plt.title('RR intervals chart')
-    plt.xlabel('Time (ms)')
+    plt.plot(filtered_numbers, filtered_rr, marker='o', color='b', linestyle='-', label='RR-intervals')
+    plt.title('RR intervals')
+    plt.xlabel('N (R-R)')
     plt.ylabel('RR-interval (ms)')
+    # Устанавливаем метки на оси X через 1
+    plt.xticks(filtered_numbers)  # Устанавливаем все числа в качестве подписей
     plt.grid(True)
     plt.legend()
     plt.show()
