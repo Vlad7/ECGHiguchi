@@ -85,8 +85,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -805,7 +805,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     continue
 
                 # 780 - 800; 1081 <
-                if (line_count != 1083):
+                if (line_count < 1081):
                     continue
 
                 # If Id is not available
@@ -829,7 +829,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # Частота дискретизації
                     sampling_rate = 1000
 
-                    #r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
+                    r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
                     #QRS_detector = pt.Pan_Tompkins_QRS()
                     #ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
@@ -2310,6 +2310,10 @@ if __name__ == '__main__':
     # Extract RR time series from files
     rr_time_series_dictionary = extract_from_files_rr_time_series(files)
 
+    ###################################################################################################################
+    ########################################## RHYTMOGRAMMA ###########################################################
+    ###################################################################################################################
+    """
     # Извлекаем RR-интервалы
     rr_intervals = rr_time_series_dictionary['1083']
 
@@ -2350,7 +2354,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.legend()
     plt.show()
-
+    """
 
     """
     find_minimum_count(rr_time_series_dictionary)
