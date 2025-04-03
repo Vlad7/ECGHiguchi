@@ -1,18 +1,21 @@
-# This is an ECG Higuchi script.
+"""This is an ECG Higuchi script"""
 
 
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 # Age groups
+import csv
+import enum
 import math
+import numpy as np
 import pandas as pd
 import openpyxl
-import enum
+
 #from IPython.display import display
-import numpy as np
+
 import wfdb
 import HiguchiFractalDimension.hfd
-import csv
+
 import matplotlib.pyplot as plt
 import os.path
 import sys
@@ -229,9 +232,9 @@ def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_diction
                        k in ECG_1_RR_intervals_HFD_dictionary}
 
     print("Female")
-    female_slope, female_intercept = linear_regression(female_HFD_dict, female_id_ageRangeIndex_dict)
+    female_slope, female_intercept = linear_regression('Female', female_HFD_dict, female_id_ageRangeIndex_dict)
     print("Male")
-    male_slope, male_intercept = linear_regression(male_HFD_dict, male_id_ageRangeIndex_dict)
+    male_slope, male_intercept = linear_regression('Male', male_HFD_dict, male_id_ageRangeIndex_dict)
 
    
    
@@ -276,7 +279,7 @@ def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict
     female_hfd_average_by_age_range = HFD_average_by_age_range(female_test_dataset, female_HFD_dict)
 
     write_average_HFD_values_for_each_age_range('male', male_hfd_average_by_age_range)
-    write_average_HFD_values_for_each_age_range('female', male_hfd_average_by_age_range)
+    write_average_HFD_values_for_each_age_range('female', female_hfd_average_by_age_range)
 
     print("Average method!\n")
     print("Male")
@@ -496,7 +499,7 @@ def convert_age_range_index_to_age_range_dictionary(id_ageRangeIndex_dict):
 
     return id_ageRange_dict
 
-def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
+def linear_regression(sex, ECG_RR_intervals_HFD_dictionary, id_ageRange_dict):
     import numpy as np
     import matplotlib.pyplot as plt
     from sklearn.linear_model import LinearRegression
@@ -523,7 +526,7 @@ def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
 
     # Преобразуем возрастные группы в средний возраст
     X = np.array([get_average_age(id_ageRange_dict[key]) for key in sorted(id_ageRange_dict)]).reshape(-1, 1)
-    y = np.array([ECG_1_RR_intervals_HFD_dictionary[key] for key in sorted(ECG_1_RR_intervals_HFD_dictionary)])
+    y = np.array([ECG_RR_intervals_HFD_dictionary[key] for key in sorted(ECG_RR_intervals_HFD_dictionary)])
 
     # Обучаем линейную регрессию
     model = LinearRegression()
@@ -531,10 +534,11 @@ def linear_regression(ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
     y_pred = model.predict(X)
 
     # Визуализация
-    plt.scatter(X, y, color='blue', label='Исходные данные')
-    plt.plot(X, y_pred, color='red', linewidth=2, label='Линейная регрессия')
-    plt.xlabel("Средний возраст")
-    plt.ylabel("ECG_1_RR_intervals_HFD")
+    plt.scatter(X, y, color='blue', label='Initial data')
+    plt.plot(X, y_pred, color='red', linewidth=2, label='Linear regression')
+    plt.title(sex)
+    plt.xlabel("Middle age")
+    plt.ylabel("ECG RR intervals HFD")
     plt.legend()
     plt.show()
 
@@ -707,9 +711,10 @@ def get_sex_for_each_id(ids, is_remotely=False):
 
         output:
 
-            lists of id's for men and women
+            dictionary with id as key and sex as value
     """
 
+    # Dictionary with id as key and sex as value
     sex_dictionary = {}
 
     # Check, if dataset is remotely located
@@ -731,10 +736,9 @@ def get_sex_for_each_id(ids, is_remotely=False):
         for row in csv_reader:
             line_count += 1
 
-            # Row[0] - id of record, row[1] - age range in index form
+            # Row[0] - id of record, row[2] - sex in index form
             if row[0] in ids:
                 sex_dictionary[row[0]] = row[2]
-
 
     return sex_dictionary
 
@@ -805,7 +809,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     continue
 
                 # 780 - 800; 1081 <
-                if (line_count < 1081):
+                if (line_count != 1083):
                     continue
 
                 # If Id is not available
@@ -829,15 +833,21 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # Частота дискретизації
                     sampling_rate = 1000
 
-                    r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
+                    #r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
 
-                    #QRS_detector = pt.Pan_Tompkins_QRS()
-                    #ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
-                    #output_singal = QRS_detector.solve(ecg)
+                    """
+                    QRS_detector = pt.Pan_Tompkins_QRS()
+                    ecg = pd.DataFrame(np.array([list(range(len(signal))), signal]).T, columns=['TimeStamp', 'ecg'])
+                    output_singal = QRS_detector.solve(ecg)
 
-                    #plot_tompkins(pt.bpass, pt.der, pt.sqr, pt.mwin)
+                    print("Бандпас:", pt.bpass)
+                    print("Дериватив:", pt.der)
+                    print("Квадрат:", pt.sqr)
+                    print("Скользящее окно:", pt.mwin)
+
+                    plot_tompkins(pt.bpass, pt.der, pt.sqr, pt.mwin)
                     #plot_R_peaks(r_peaks, signal)
-
+                    """
 
 
 
@@ -1036,37 +1046,53 @@ def calculate_heart_rate(ecg):
 
 def plot_tompkins(bpass, der, sqr, mwin):
 
+    # Определяем индексы RR-интервалов в диапазоне 40-52 секунды (40000-52000 мс)
+    #start_idx = np.searchsorted(cumulative_time, 40000)  # первый индекс
+    #end_idx = np.searchsorted(cumulative_time, 54000)  # последний индекс
+
+
     # Plotting bandpassed signal
     plt.figure(figsize = (20,4), dpi = 100)
-    plt.xticks(np.arange(0, len(bpass)+1, 150))
-    plt.plot(bpass[32:len(bpass)-2])
+    plt.xticks(np.arange(40000, 54000, 1000))
+    plt.plot(bpass[40000:54000])
+    #plt.plot(bpass[32:len(bpass)-2])
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Bandpassed Signal")
+    plt.show()
 
     # Plotting derived signal
     plt.figure(figsize = (20,4), dpi = 100)
-    plt.xticks(np.arange(0, len(der)+1, 150))
-    plt.plot(der[32:len(der)-2])
+    plt.xticks(np.arange(40000, 54000, 1000))
+    plt.plot(der[40000:54000])
+    #plt.xticks(np.arange(0, len(der)+1, 150))
+    #plt.plot(der[32:len(der)-2])
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Derivative Signal")
+    plt.show()
 
     # Plotting squared signal
     plt.figure(figsize = (20,4), dpi = 100)
-    plt.xticks(np.arange(0, len(sqr)+1, 150))
-    plt.plot(sqr[32:len(sqr)-2])
+    plt.xticks(np.arange(40000, 54000, 1000))
+    plt.plot(sqr[40000:54000])
+    #plt.xticks(np.arange(0, len(sqr)+1, 150))
+    #plt.plot(sqr[32:len(sqr)-2])
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Squared Signal")
+    plt.show()
 
     # Plotting moving window integrated signal
     plt.figure(figsize = (20,4), dpi = 100)
-    plt.xticks(np.arange(0, len(mwin)+1, 150))
-    plt.plot(mwin[100:len(mwin)-2])
+    plt.xticks(np.arange(40000, 54000, 1000))
+    plt.plot(mwin[40000:54000])
+    #plt.xticks(np.arange(0, len(mwin)+1, 150))
+    #plt.plot(mwin[100:len(mwin)-2])
     plt.xlabel('Samples')
     plt.ylabel('MLIImV')
     plt.title("Moving Window Integrated Signal")
+    plt.show()
 
 from scipy.signal import butter, filtfilt
 
@@ -2218,6 +2244,43 @@ def split_rr_intervals_on_train_and_test_datasets(age_ranges_ids_dictionary):
 
     return train_data, test_data
 
+def plot_RR_intervals(rr_intervals):
+    # Создаём массив накопленного времени
+    cumulative_time = np.cumsum(rr_intervals)  # массив накопленного времени (в мс)
+
+    print(cumulative_time)
+
+    # Определяем индексы RR-интервалов в диапазоне 40-52 секунды (40000-52000 мс)
+    start_idx = np.searchsorted(cumulative_time, 40000)  # первый индекс
+    end_idx = np.searchsorted(cumulative_time, 54000)  # последний индекс
+    # Отбираем данные для построения графика
+    filtered_rr = rr_intervals[start_idx:end_idx]
+    filtered_time = cumulative_time[start_idx:end_idx]
+    # print(filtered_time)
+
+    # Создаём ось X (по номеру R-R)
+    filtered_numbers = list(range(start_idx + 1, end_idx + 1))
+    print(filtered_numbers)
+    # Для графика создадим массив с метками времени, который соответствует каждому интервалу
+    # Так как частота дискретизации 1000 Гц, то временная ось будет с шагом 1 мс
+    sampling_rate = 1000
+    print(len(rr_intervals))
+    # time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
+    number_axis = [i + 1 for i in range(len(rr_intervals))]
+    print(filtered_numbers)
+    # print(number_axis)
+    # Строим график
+    plt.figure(figsize=(10, 6))
+    plt.plot(filtered_numbers, filtered_rr, marker='o', color='b', linestyle='-', label='RR-intervals')
+    plt.title('RR intervals')
+    plt.xlabel('N (R-R)')
+    plt.ylabel('RR-interval (ms)')
+    # Устанавливаем метки на оси X через 1
+    plt.xticks(filtered_numbers)  # Устанавливаем все числа в качестве подписей
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
 if __name__ == '__main__':
 
 
@@ -2301,8 +2364,8 @@ if __name__ == '__main__':
 
 
 
-    num_k_value = 50
-    k_max_value = None
+    #num_k_value = 50
+    #k_max_value = None
 
     # Get list of files with rr_intervals
     files = list_files_with_rr_intervals()
@@ -2319,44 +2382,10 @@ if __name__ == '__main__':
 
     print(rr_intervals)
 
-    # Создаём массив накопленного времени
-    cumulative_time = np.cumsum(rr_intervals)  # массив накопленного времени (в мс)
-
-    print(cumulative_time)
-
-    # Определяем индексы RR-интервалов в диапазоне 40-52 секунды (40000-52000 мс)
-    start_idx = np.searchsorted(cumulative_time, 40000)   # первый индекс
-    end_idx = np.searchsorted(cumulative_time, 54000)  # последний индекс
-    # Отбираем данные для построения графика
-    filtered_rr = rr_intervals[start_idx:end_idx]
-    filtered_time = cumulative_time[start_idx:end_idx]
-    #print(filtered_time)
-
-    # Создаём ось X (по номеру R-R)
-    filtered_numbers = list(range(start_idx + 1, end_idx + 1))
-    print(filtered_numbers)
-    # Для графика создадим массив с метками времени, который соответствует каждому интервалу
-    # Так как частота дискретизации 1000 Гц, то временная ось будет с шагом 1 мс
-    sampling_rate = 1000
-    print(len(rr_intervals))
-    #time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
-    number_axis = [i + 1 for i in range(len(rr_intervals))]
-    print(filtered_numbers)
-    #print(number_axis)
-    # Строим график
-    plt.figure(figsize=(10, 6))
-    plt.plot(filtered_numbers, filtered_rr, marker='o', color='b', linestyle='-', label='RR-intervals')
-    plt.title('RR intervals')
-    plt.xlabel('N (R-R)')
-    plt.ylabel('RR-interval (ms)')
-    # Устанавливаем метки на оси X через 1
-    plt.xticks(filtered_numbers)  # Устанавливаем все числа в качестве подписей
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    plot_RR_intervals(rr_intervals)
     """
 
-    """
+
     find_minimum_count(rr_time_series_dictionary)
     check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, 300000)
 
@@ -2366,7 +2395,7 @@ if __name__ == '__main__':
     # Preprocess each rr_intervals record
     for key in rr_time_series_dictionary.keys():
         preprocessed_dictionary[key] = preprocess_rr_intervals(rr_time_series_dictionary[key])
-    """
+
 
 
     #check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary)
@@ -2398,9 +2427,9 @@ if __name__ == '__main__':
         plt.show()
     """
 
-    #dict = calculate_higuchi(preprocessed_dictionary)
+    dict = calculate_higuchi(preprocessed_dictionary)
     #get_information_about_sex(preprocessed_dictionary.keys())
-    #calculate_linear_regression(preprocessed_dictionary, dict)
+    calculate_linear_regression(preprocessed_dictionary, dict)
 
     """
     #test_records_for_breaks()
