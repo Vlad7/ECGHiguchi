@@ -88,8 +88,8 @@ from biosppy.signals import ecg
 
 # Path to dataset of ECG
 # For future make loading from web database
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -499,7 +499,11 @@ def convert_age_range_index_to_age_range_dictionary(id_ageRangeIndex_dict):
 
     return id_ageRange_dict
 
+<<<<<<< HEAD:ECGHiguchi.py
 def linear_regression(sex, ECG_RR_intervals_HFD_dictionary, id_ageRange_dict):
+=======
+def linear_regression(sex, ECG_1_RR_intervals_HFD_dictionary, id_ageRange_dict):
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     import numpy as np
     import matplotlib.pyplot as plt
     from sklearn.linear_model import LinearRegression
@@ -2244,29 +2248,51 @@ def split_rr_intervals_on_train_and_test_datasets(age_ranges_ids_dictionary):
 
     return train_data, test_data
 
+<<<<<<< HEAD:ECGHiguchi.py
 def plot_RR_intervals(rr_intervals):
+=======
+def plot_RR_intervals_time_series(rr_intervals, first_time=40000, second_time=54000):
+    """Plot RR intervals time series in the time range"""
+    # Извлекаем RR-интервалы
+
+    print(rr_intervals)
+
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     # Создаём массив накопленного времени
     cumulative_time = np.cumsum(rr_intervals)  # массив накопленного времени (в мс)
 
     print(cumulative_time)
 
     # Определяем индексы RR-интервалов в диапазоне 40-52 секунды (40000-52000 мс)
+<<<<<<< HEAD:ECGHiguchi.py
     start_idx = np.searchsorted(cumulative_time, 40000)  # первый индекс
     end_idx = np.searchsorted(cumulative_time, 54000)  # последний индекс
+=======
+    start_idx = np.searchsorted(cumulative_time, first_time)  # первый индекс
+    end_idx = np.searchsorted(cumulative_time, second_time)  # последний индекс
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     # Отбираем данные для построения графика
     filtered_rr = rr_intervals[start_idx:end_idx]
     filtered_time = cumulative_time[start_idx:end_idx]
     # print(filtered_time)
 
     # Создаём ось X (по номеру R-R)
+<<<<<<< HEAD:ECGHiguchi.py
     filtered_numbers = list(range(start_idx + 1, end_idx + 1))
+=======
+    filtered_numbers = list(range(start_idx + 1, end_idx + 1)) # + 1 поскольку натуральные числа, нумеруется от 1
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     print(filtered_numbers)
     # Для графика создадим массив с метками времени, который соответствует каждому интервалу
     # Так как частота дискретизации 1000 Гц, то временная ось будет с шагом 1 мс
     sampling_rate = 1000
     print(len(rr_intervals))
     # time_axis = [i / sampling_rate for i in range(len(rr_intervals))]  # временные метки с шагом 1 мс
+<<<<<<< HEAD:ECGHiguchi.py
     number_axis = [i + 1 for i in range(len(rr_intervals))]
+=======
+    #number_axis = [i + 1 for i in range(len(rr_intervals))]
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     print(filtered_numbers)
     # print(number_axis)
     # Строим график
@@ -2359,7 +2385,7 @@ if __name__ == '__main__':
 
     ############################################## !!!!!!!!!!!! ######################################################
 
-    read_ECGs_annotation_data(False, True)
+    #read_ECGs_annotation_data(False, True)
 
 
 
@@ -2377,12 +2403,17 @@ if __name__ == '__main__':
     ########################################## RHYTMOGRAMMA ###########################################################
     ###################################################################################################################
     """
-    # Извлекаем RR-интервалы
     rr_intervals = rr_time_series_dictionary['1083']
+<<<<<<< HEAD:ECGHiguchi.py
 
     print(rr_intervals)
 
     plot_RR_intervals(rr_intervals)
+=======
+    plot_RR_intervals_time_series(rr_intervals, first_time=40000, second_time=54000)
+    # Извлекаем RR-интервалы
+    
+>>>>>>> 656070680c830555b17cc418a16e6388599c61e9:main.py
     """
 
 
