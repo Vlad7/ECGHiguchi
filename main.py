@@ -89,6 +89,7 @@ from biosppy.signals import ecg
 path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 csv_info_file = 'subject-info.csv'
 
+#Folder with files in each there is RR-intervals time series
 rr_intervals_folder="rr_intervals/all"
 #######################################################################################################################
 
@@ -214,7 +215,8 @@ def get_age_ranges_for_male_and_female(ECG_RR_intervals_keys, male_ids_list, fem
 
 
 def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_dictionary):
-
+    """Calculate linear regression method.
+        """
     male_ids_list, female_ids_list = get_information_about_sex(ECG_RR_intervals.keys())
 
     male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict = (
@@ -263,7 +265,10 @@ def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_diction
 
 def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
                         male_slope, male_intercept, female_slope, female_intercept):
-
+    """Method for finding biological age
+        male_age_category_ids_dict - dictionary for males with age category as key and ids list as value
+        female_age_category_ids_dict - dictionary for females with age category as key and ids list as value
+    """
     print("Male")
     male_train_dataset, male_test_dataset = (
         split_rr_intervals_on_train_and_test_datasets(male_age_category_ids_dict))
@@ -2057,10 +2062,10 @@ def print_hi(name):
 
 
 ######################################################################################################
-######################################################################################################
+################################### LOAD RR-INTERVALS TIME SERIES ####################################
 ######################################################################################################
 def list_files_with_rr_intervals():
-    """Get list of files with rr_intervals from rr_interval/all folder"""
+    """Get list of files with rr_intervals time series from rr_interval/all folder"""
     import os
 
     directory = rr_intervals_folder
@@ -2074,8 +2079,10 @@ def list_files_with_rr_intervals():
     return files
 
 def extract_from_files_rr_time_series(files):
-    """Extract from files rr time series"""
+    """Extract from files RR intervals time series
 
+        input: files - file names
+        output: rr_time_series_dictionary - dictionary with id as key and list of RR-intervals as value"""
 
     import re
 
@@ -2115,17 +2122,12 @@ def extract_from_files_rr_time_series(files):
 
     return rr_time_series_dictionary
 
-def check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, min_time=300000):
-    """Перевірити, чи сума інтервалів часового ряду менша 5 хв"""
 
 
-    for key in rr_time_series_dictionary.keys():
-        summ = np.sum(rr_time_series_dictionary[key])
-        if summ < min_time:
-            print("Запись временных рядов меньше 5 минут!")
+
 
 def find_minimum_count(rr_time_series_dictionary):
-    """Find minimum count of rr-intervals"""
+    """Find minimum count of rr-intervals in lists of dictionary values"""
     # Find minimum len of rr_time_series
     min_len = 1000000
     for id in rr_time_series_dictionary.keys():
@@ -2135,28 +2137,35 @@ def find_minimum_count(rr_time_series_dictionary):
     print(min_len)
 
 
+def check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, min_time=300000):
+    """Check, if summ of RR intervals of time series less than 5 min"""
 
+    for key in rr_time_series_dictionary.keys():
+        summ = np.sum(rr_time_series_dictionary[key])
+        if summ < min_time:
+            print("Record of time series less than 5 minutes!")
 
 def preprocess_rr_intervals(rr_intervals, mode="fixed_count", count=440, duration=300000):
     """
-    Предобработка RR-интервалов: выбор фиксированного количества точек или временного интервала.
+    Preprocessing of RR-intervals: selecting fixed number of points or time interval. Maybe for future add different
+    methods for cut.
 
-    :param rr_intervals: массив RR-интервалов (в мс)
-    :param mode: "fixed_count" (фиксированное количество) или "fixed_duration" (фиксированная длительность)
-    :param count: количество RR-интервалов (например, 500)
-    :param duration: длительность анализа в мс (например, 300000 мс = 5 минут)
-    :return: обработанный массив RR-интервалов
+    :param rr_intervals: массив RR-интервалів (в мс)
+    :param mode: "fixed_count" (фіксована кількість) или "fixed_duration" (фіксована тривалість)
+    :param count: кількість RR-интервалів (наприклад, 500)
+    :param duration: тривалість аналізу в мс (наприклад, 300000 мс = 5 хвилин)
+    :return: опрацьований масив RR-интервалів
     """
-    rr_intervals = np.array(rr_intervals)  # Преобразуем в массив numpy
-    avg_rr = np.mean(rr_intervals)  # Средний RR-интервал
-    hr = 60000 / avg_rr  # ЧСС (уд/мин)
+    rr_intervals = np.array(rr_intervals)  # Перетворюэмо в массив numpy
+    avg_rr = np.mean(rr_intervals)  # Середній RR-інтервал
+    hr = 60000 / avg_rr  # ЧСС (уд/хв)
 
-    print(f"Средний RR-интервал: {avg_rr:.2f} мс, ЧСС: {hr:.2f} уд/мин")
+    print(f"Середній RR-інтервал: {avg_rr:.2f} мс, ЧСС: {hr:.2f} уд/мин")
 
     if mode == "fixed_count":
-        print("Всего: "+str(len(rr_intervals)))
-        print(f"Выбрано {count} RR-интервалов")
-        return rr_intervals[:count]  # Берем первые count точек
+        print("Всього: "+str(len(rr_intervals)))
+        print(f"Вибрано {count} RR-интервалов")
+        return rr_intervals[:count]  # Беремо перші count точок
 
     elif mode == "fixed_duration":
         total_time = np.cumsum(rr_intervals)  # Суммируем RR-интервалы
@@ -2347,10 +2356,14 @@ if __name__ == '__main__':
     num_k_value = 50
     k_max_value = None
 
-    # Get list of files with rr_intervals
+
+
+
+
+    # Get list of files with rr_intervals time series
     files = list_files_with_rr_intervals()
 
-    # Extract RR time series from files
+    # Extract RR intervals time series from files to dictionary with id as key and RR intervals time series as value
     rr_time_series_dictionary = extract_from_files_rr_time_series(files)
 
     ###################################################################################################################
@@ -2362,9 +2375,11 @@ if __name__ == '__main__':
     # Извлекаем RR-интервалы
     
     """
+    ###################################################################################################################
 
-
+    #Find minimum count of rr_intervals in time series of dictionary
     find_minimum_count(rr_time_series_dictionary)
+
     check_for_minimum_time_rr_time_intervals(rr_time_series_dictionary, 300000)
 
     # 440 min count, all > 5 min
