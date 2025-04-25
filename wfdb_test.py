@@ -19,7 +19,9 @@ from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+
 csv_info_file = 'subject-info.csv'
 
 rr_intervals_folder="rr_intervals/all"
@@ -395,15 +397,19 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     p_start_waves = pd.Series(waves_peaks["ECG_P_Onsets"])
     p_end_waves   = pd.Series(waves_peaks["ECG_P_Offsets"])
+    q_waves = pd.Series(waves_peaks["ECG_Q_Peaks"])
+    s_waves = pd.Series(waves_peaks["ECG_S_Peaks"])
     t_start_waves = pd.Series(waves_peaks["ECG_T_Onsets"])
     t_end_waves =   pd.Series(waves_peaks["ECG_T_Offsets"])
-    s_waves       = pd.Series(waves_peaks["ECG_S_Peaks"])
 
-    p_start_waves_trimmed = p_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
+
+    p_start_waves = p_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
     p_end_waves = p_end_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
+    q_waves = q_waves[q_waves.first_valid_index():q_waves.last_valid_index() + 1]
+    s_waves = s_waves[s_waves.first_valid_index():s_waves.last_valid_index() + 1]
     t_start_waves = t_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
     t_end_waves = t_end_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
-    s_waves = s_waves[s_waves.first_valid_index():s_waves.last_valid_index() + 1]
+
     r_peaks = r_peaks[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
 
     # mask = ~np.isnan(pr_intervals)
@@ -423,14 +429,17 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
             break
         index_from +=1
 
+    q_waves = q_waves[index_from:]
     r_peaks = r_peaks[index_from:]
-    s_waves
+    s_waves = s_waves[index_from:]
 
     min_length = min(len(r_peaks), len(p_start_waves))
 
     # Вирівняти обидва масиви по довжині
     p_start_waves = p_start_waves[:min_length] # Зріз до індексу min_length, не включаючи його
     r_peaks = r_peaks[:min_length]
+    q_waves = q_waves[:min_length]
+    s_waves = s_waves[:min_length]
 
     p_end_waves = p_end_waves[:min_length]
 
@@ -453,13 +462,18 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     # Вирівняти обидва масиви по довжині
     r_peaks = r_peaks[:min_length]
+    q_waves = q_waves[:min_length]
+    s_waves = s_waves[:min_length]
     t_start_waves = t_start_waves[:min_length]  # Зріз до індексу min_length, не включаючи його
     t_end_waves = t_end_waves[:min_length]
     ################################################################################
 
-    print("R peaks: ", r_peaks)
+
     print("P start waves: ", p_start_waves)
     print("P end waves: ", p_end_waves)
+    print("Q waves: ", q_waves)
+    print("R peaks: ", r_peaks)
+    print("S waves: ", s_waves)
     print("T start waves: ", t_start_waves)
     print("T end waves: ", t_end_waves)
 
