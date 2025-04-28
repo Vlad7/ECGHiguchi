@@ -21,8 +21,8 @@ from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
@@ -460,7 +460,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     ###############################################################################
     # Нужно найти для каждого R соответствующий T позже него, и тогда всё будет ок.
 
-    minimal_r_start_wave = r_peaks[0]
+    minimal_r_start_wave = r_peaks.iloc[0]
 
     index_from = 0
 
@@ -470,7 +470,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
         index_from += 1
 
     t_start_waves = t_start_waves[index_from:]
-    t_peaks = t_peaks[index_from]
+    t_peaks = t_peaks[index_from:]
     t_end_waves  = t_end_waves[index_from:]
 
     min_length = min(len(r_peaks), len(t_start_waves))
@@ -498,13 +498,26 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     ################### Mask NaN values #######################
     mask = ~np.isnan(p_start_waves)
+    mask = mask.reset_index(drop=True)
 
+
+
+    p_start_waves = p_start_waves.reset_index(drop=True)
+    p_end_waves = p_end_waves.reset_index(drop=True)
+    q_waves = q_waves.reset_index(drop=True)
+    r_peaks = r_peaks.reset_index(drop=True)
+    s_waves = s_waves.reset_index(drop=True)
+    t_start_waves = t_start_waves.reset_index(drop=True)
+    t_end_waves = t_end_waves.reset_index(drop=True)
+
+
+    p_start_waves = p_start_waves[mask]
     p_end_waves = p_end_waves[mask]
     q_waves = q_waves[mask]
     r_peaks = r_peaks[mask]
     s_waves = s_waves[mask]
     t_start_waves = t_start_waves[mask]
-    t_end_waves = t_end_wavesp[mask]
+    t_end_waves = t_end_waves[mask]
     ###########################################################
 
     p_duration = find_P_interval(p_start_waves, p_end_waves)    #!!!
@@ -516,14 +529,14 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print("Heart rate: ",HCF)
 
     ################################ Перевіряємо, чи PR інтервали однакові ###########################
-    corrected_pr_intervals = corrected_PR_intervals(r_peaks, waves_peaks["ECG_P_Onsets"][1:len(r_peaks) - 1])
+    corrected_pq_intervals = corrected_PQ_intervals(q_waves, p_start_waves)
 
     # Перевіримо варіацію:
-    std_dev = np.std(corrected_pr_intervals)
-    mean_val = np.mean(corrected_pr_intervals)
+    std_dev = np.std(corrected_pq_intervals)
+    mean_val = np.mean(corrected_pq_intervals)
     coefficient_of_variation = std_dev / mean_val       #!!!
 
-    print(f"PR intervals: {corrected_pr_intervals}")
+    print(f"PQ intervals: {corrected_pq_intervals}")
 
     # 2-nd and 3-rd parameters (mean PR intervals, CoefVar)
     print(f"Mean PR: {mean_val:.2f}, Std: {std_dev:.2f}, CoefVar: {coefficient_of_variation:.4f}")
@@ -537,11 +550,12 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     # 5-th parameter (mean ST interval)
     mean_ST = mean_ST_interval(s_waves, t_start_waves)
 
-    print(f"Mean ST: ", mean_ST)
+    print(f"Mean ST segment: ", mean_ST)
 
     # 6-th parameter (QRS complex)
     mean_QRS = mean_QRS_complex(q_waves, s_waves)
 
+    print("Mean QRS: ", mean_QRS)
     # p_end = delineate_info["ECG_P_Offsets"][index]
     # q_start = delineate_info["ECG_Q_Peaks"][index]
     # s_end = delineate_info["ECG_S_Peaks"][index]
@@ -675,19 +689,19 @@ def plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot):
     plt.show()
 
 
-def corrected_PR_intervals(r_peaks, p_start_waves):
+def corrected_PQ_intervals(q_peaks, p_start_waves):
     # Нужно найти для каждого P соответствующий R позже него, и тогда всё будет ок.
 
-    corrected_pr_intervals = []
+    corrected_pq_intervals = []
 
     for p in p_start_waves:
-        r_candidates = r_peaks[r_peaks > p]
-        if len(r_candidates) > 0:
-            nearest_r = r_candidates[0]
-            corrected_pr_intervals.append(nearest_r - p)
+        q_candidates = q_peaks[q_peaks > p]
+        if len(q_candidates) > 0:
+            nearest_q = q_candidates.iloc[0]
+            corrected_pq_intervals.append(nearest_q - p)
 
-    corrected_pr_intervals = np.array(corrected_pr_intervals)
-    return corrected_pr_intervals
+    corrected_pq_intervals = np.array(corrected_pq_intervals)
+    return corrected_pq_intervals
 
 
 def extract_from_files_ids(files):
