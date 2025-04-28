@@ -15,12 +15,14 @@ import numpy as np
 from biosppy.signals import ecg
 import matplotlib.pyplot as plt
 from statistics import mean
+
+from neurokit2 import rsp_amplitude
 from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
@@ -393,30 +395,40 @@ def mean_RR_interval(r_peaks):
 
     return average_interval
 
+def mean_ST_interval(s_waves, t_waves):
+    st = t_waves - s_waves
+    average_st = np.mean(st)
+
+    return average_st
+
+def mean_QRS_complex(q_waves, s_waves):
+    qrs = s_waves - q_waves
+    average_qrs = np.mean(qrs)
+
+    return average_qrs
+
 def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     p_start_waves = pd.Series(waves_peaks["ECG_P_Onsets"])
+    p_peaks = pd.Series(waves_peaks["ECG_P_Peaks"])
     p_end_waves   = pd.Series(waves_peaks["ECG_P_Offsets"])
     q_waves = pd.Series(waves_peaks["ECG_Q_Peaks"])
     s_waves = pd.Series(waves_peaks["ECG_S_Peaks"])
     t_start_waves = pd.Series(waves_peaks["ECG_T_Onsets"])
+    t_peaks = pd.Series(waves_peaks["ECG_T_Peaks"])
     t_end_waves =   pd.Series(waves_peaks["ECG_T_Offsets"])
 
 
     p_start_waves = p_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
-    p_end_waves = p_end_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
+    p_peaks = p_peaks[p_peaks.first_valid_index():p_peaks.last_valid_index() + 1]
+    p_end_waves = p_end_waves[p_end_waves.first_valid_index():p_end_waves.last_valid_index() + 1]
     q_waves = q_waves[q_waves.first_valid_index():q_waves.last_valid_index() + 1]
     s_waves = s_waves[s_waves.first_valid_index():s_waves.last_valid_index() + 1]
-    t_start_waves = t_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
-    t_end_waves = t_end_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
+    t_start_waves = t_start_waves[t_start_waves.first_valid_index():t_start_waves.last_valid_index() + 1]
+    t_peaks = t_peaks[t_peaks.first_valid_index():t_peaks.last_valid_index() + 1]
+    t_end_waves = t_end_waves[t_end_waves.first_valid_index():t_end_waves.last_valid_index() + 1]
 
-    r_peaks = r_peaks[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
-
-    # mask = ~np.isnan(pr_intervals)
-
-    # pr_intervals = pr_intervals[mask]
-    # p_onsets = p_onsets[mask]
-    # r_peaks = r_peaks[mask]
+    r_peaks = r_peaks[r_peaks.first_valid_index():r_peaks.last_valid_index() + 1]
 
     ###############################################################################
     # Нужно найти для каждого P соответствующий R позже него, и тогда всё будет ок.
@@ -437,11 +449,13 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     # Вирівняти обидва масиви по довжині
     p_start_waves = p_start_waves[:min_length] # Зріз до індексу min_length, не включаючи його
+    p_peaks = p_peaks[:min_length]
+    p_end_waves = p_end_waves[:min_length]
     r_peaks = r_peaks[:min_length]
     q_waves = q_waves[:min_length]
     s_waves = s_waves[:min_length]
 
-    p_end_waves = p_end_waves[:min_length]
+
 
     ###############################################################################
     # Нужно найти для каждого R соответствующий T позже него, и тогда всё будет ок.
@@ -456,6 +470,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
         index_from += 1
 
     t_start_waves = t_start_waves[index_from:]
+    t_peaks = t_peaks[index_from]
     t_end_waves  = t_end_waves[index_from:]
 
     min_length = min(len(r_peaks), len(t_start_waves))
@@ -465,9 +480,13 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     q_waves = q_waves[:min_length]
     s_waves = s_waves[:min_length]
     t_start_waves = t_start_waves[:min_length]  # Зріз до індексу min_length, не включаючи його
+    t_peaks = t_peaks[:min_length]
     t_end_waves = t_end_waves[:min_length]
+    p_start_waves = p_start_waves[:min_length]
+    p_peaks = p_peaks[:min_length]
+    p_end_waves = p_end_waves[:min_length]
     ################################################################################
-
+    # Можливо перевірити випадок, коли останні значення не співпадають
 
     print("P start waves: ", p_start_waves)
     print("P end waves: ", p_end_waves)
@@ -477,10 +496,22 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print("T start waves: ", t_start_waves)
     print("T end waves: ", t_end_waves)
 
+    ################### Mask NaN values #######################
+    mask = ~np.isnan(p_start_waves)
+
+    p_end_waves = p_end_waves[mask]
+    q_waves = q_waves[mask]
+    r_peaks = r_peaks[mask]
+    s_waves = s_waves[mask]
+    t_start_waves = t_start_waves[mask]
+    t_end_waves = t_end_wavesp[mask]
+    ###########################################################
+
     p_duration = find_P_interval(p_start_waves, p_end_waves)    #!!!
     t_duration = find_T_interval(t_start_waves, t_end_waves)    #!!!
 
-    # Calculate heart contraction frequency
+    ###############################################################################
+    # Calculate heart contraction frequency - 1-st parameter (heart rate)
     HCF = calculate_HCF(r_peaks)                        #!!!
     print("Heart rate: ",HCF)
 
@@ -493,12 +524,23 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     coefficient_of_variation = std_dev / mean_val       #!!!
 
     print(f"PR intervals: {corrected_pr_intervals}")
+
+    # 2-nd and 3-rd parameters (mean PR intervals, CoefVar)
     print(f"Mean PR: {mean_val:.2f}, Std: {std_dev:.2f}, CoefVar: {coefficient_of_variation:.4f}")
     ##################################################################################################
 
+    # 4-th parameter (mean RR intervals)
     mean_RR = mean_RR_interval(r_peaks)
 
     print(f"Mean RR: ", mean_RR)
+
+    # 5-th parameter (mean ST interval)
+    mean_ST = mean_ST_interval(s_waves, t_start_waves)
+
+    print(f"Mean ST: ", mean_ST)
+
+    # 6-th parameter (QRS complex)
+    mean_QRS = mean_QRS_complex(q_waves, s_waves)
 
     # p_end = delineate_info["ECG_P_Offsets"][index]
     # q_start = delineate_info["ECG_Q_Peaks"][index]
@@ -506,9 +548,14 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     # t_start = delineate_info["ECG_T_Onsets"][index]
 
 
-
+    # 7-th and 8-th parameters (P duration, T duration)
     print("P duration: ", p_duration)
     print("T duration: ", t_duration)
+
+    #9-th, 10-th and 11-th parameter
+    p_amplitude = np.mean(cleaned_signal[p_peaks])
+    r_amplitude = np.mean(cleaned_signal[r_peaks])
+    t_amplitude = np.mean(cleaned_signal[t_peaks])
 
     # print("P end ",p_end) #Index of P end
     # print(q_start)  #Index of q start
