@@ -21,8 +21,8 @@ from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
@@ -417,7 +417,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     t_start_waves = pd.Series(waves_peaks["ECG_T_Onsets"])
     t_peaks = pd.Series(waves_peaks["ECG_T_Peaks"])
     t_end_waves =   pd.Series(waves_peaks["ECG_T_Offsets"])
-
+    r_peaks = pd.Series(r_peaks)
 
     p_start_waves = p_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
     p_peaks = p_peaks[p_peaks.first_valid_index():p_peaks.last_valid_index() + 1]
@@ -556,6 +556,10 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     p_amplitude = np.mean(cleaned_signal[p_peaks])
     r_amplitude = np.mean(cleaned_signal[r_peaks])
     t_amplitude = np.mean(cleaned_signal[t_peaks])
+
+    print("P amplitude: ", p_amplitude)
+    print("R amplitude: ", r_amplitude)
+    print("T amplitude: ", t_amplitude)
 
     # print("P end ",p_end) #Index of P end
     # print(q_start)  #Index of q start
