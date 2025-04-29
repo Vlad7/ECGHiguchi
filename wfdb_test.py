@@ -539,7 +539,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print(f"PQ intervals: {corrected_pq_intervals}")
 
     # 2-nd and 3-rd parameters (mean PR intervals, CoefVar)
-    print(f"Mean PR: {mean_val:.2f}, Std: {std_dev:.2f}, CoefVar: {coefficient_of_variation:.4f}")
+    print(f"Mean PQ: {mean_val:.2f}, Std: {std_dev:.2f}, CoefVar: {coefficient_of_variation:.4f}")
     ##################################################################################################
 
     # 4-th parameter (mean RR intervals)
