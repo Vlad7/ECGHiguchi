@@ -30,6 +30,24 @@ rr_intervals_folder="rr_intervals/all"
 
 DATABASE_ATTRIBUTES = []
 
+age_groups = {'NaN': 'none',
+              '1': '18 - 19',
+                  '2': '20 - 24',
+                  '3': '25 - 29',
+                  '4': '30 - 34',
+                  '5': '35 - 39',
+                  '6': '40 - 44',
+                  '7': '45 - 49',
+                  '8': '50 - 54',
+                  '9': '55 - 59',
+                  '10': '60 - 64',
+                  '11': '65 - 69',
+                  '12': '70 - 74',
+                  '13': '75 - 79',
+                  '14': '80 - 84',
+                  '15': '85 - 92',
+                  }
+
 def breaked_ECGs():
     """ECG's with breakes (empties in ECG line)"""
 
@@ -214,6 +232,9 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
     # Id's general both for first ecg, first unique, second unique
     general, first_unique, second_unique = sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids)
 
+    ECGs_features_male = {}
+    ECGs_features_female = {}
+
     # Check, if dataset is remotely located
     if is_remotely:
         path = csv_info_file
@@ -282,8 +303,17 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 _, waves_peaks = nk.ecg_delineate(cleaned_signal, r_peaks,
                                                  sampling_rate=sampling_rate, method="cwt", show=True)
 
-                calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
+                features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
+                if row[2] == '0':
+                    #ECG dictionary with id as key and list as value with age category, sex, ECG features
+                    ECGs_features_male = [row[0], row[1], features]
+                    write_ECG_parameters_to_csv('male', ECGs_features_male)
+
+                if row[2] == '1':
+                    # ECG dictionary with id as key and list as value with age category, sex, ECG features
+                    ECGs_features_female[row[0]] = [row[0], row[1], features]
+                    write_ECG_parameters_to_csv('female', ECGs_features_female)
 
                 # Припустимо, ми аналізуємо перші три серцевих цикли на графіку:
 
@@ -369,6 +399,8 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     writer.writeheader()
                     writer.writerows(ecg_attributes)
                 """
+
+
 def calculate_HCF(r_peaks):
     # Вычисляем временные интервалы между пиками R
 
@@ -519,6 +551,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     t_start_waves = t_start_waves[mask]
     t_end_waves = t_end_waves[mask]
     ###########################################################
+    ECG_PARAMETERS = {}
 
     p_duration = find_P_interval(p_start_waves, p_end_waves)    #!!!
     t_duration = find_T_interval(t_start_waves, t_end_waves)    #!!!
@@ -527,6 +560,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     # Calculate heart contraction frequency - 1-st parameter (heart rate)
     HCF = calculate_HCF(r_peaks)                        #!!!
     print("Heart rate: ",HCF)
+    ECG_PARAMETERS["Heart rate"] = HCF
 
     ################################ Перевіряємо, чи PR інтервали однакові ###########################
     corrected_pq_intervals = corrected_PQ_intervals(q_waves, p_start_waves)
@@ -540,22 +574,27 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     # 2-nd and 3-rd parameters (mean PR intervals, CoefVar)
     print(f"Mean PQ: {mean_val:.2f}, Std: {std_dev:.2f}, CoefVar: {coefficient_of_variation:.4f}")
+    ECG_PARAMETERS["PQ"] = mean_val
+    ECG_PARAMETERS["PQ CoefVar"] = coefficient_of_variation
     ##################################################################################################
 
     # 4-th parameter (mean RR intervals)
     mean_RR = mean_RR_interval(r_peaks)
 
     print(f"Mean RR: ", mean_RR)
+    ECG_PARAMETERS["RR"] = mean_RR
 
     # 5-th parameter (mean ST interval)
     mean_ST = mean_ST_interval(s_waves, t_start_waves)
 
     print(f"Mean ST segment: ", mean_ST)
+    ECG_PARAMETERS["ST"] = mean_ST
 
     # 6-th parameter (QRS complex)
     mean_QRS = mean_QRS_complex(q_waves, s_waves)
 
     print("Mean QRS: ", mean_QRS)
+    ECG_PARAMETERS["QRS"] = mean_QRS
     # p_end = delineate_info["ECG_P_Offsets"][index]
     # q_start = delineate_info["ECG_Q_Peaks"][index]
     # s_end = delineate_info["ECG_S_Peaks"][index]
@@ -564,7 +603,9 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     # 7-th and 8-th parameters (P duration, T duration)
     print("P duration: ", p_duration)
+    ECG_PARAMETERS["P"] = p_duration
     print("T duration: ", t_duration)
+    ECG_PARAMETERS["T"] = t_duration
 
     #9-th, 10-th and 11-th parameter
     p_amplitude = np.mean(cleaned_signal[p_peaks])
@@ -575,6 +616,9 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print("R amplitude: ", r_amplitude)
     print("T amplitude: ", t_amplitude)
 
+    ECG_PARAMETERS["P amplitude"] = p_amplitude
+    ECG_PARAMETERS["R amplitude"] = r_amplitude
+    ECG_PARAMETERS["T amplitude"] = t_amplitude
     # print("P end ",p_end) #Index of P end
     # print(q_start)  #Index of q start
     # PQ сегмент:
@@ -602,10 +646,11 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
 
 
-    print(r_peaks[1:len(r_peaks) - 1])
-    print(p_start_waves)
+    #print(r_peaks[1:len(r_peaks) - 1])
+    #print(p_start_waves)
     # Видаляємо NaN
     #pr_intervals = pr_intervals[~np.isnan(pr_intervals)]
+    return ECG_PARAMETERS
 
 
 def find_P_interval(p_start_waves, p_end_waves):
@@ -739,15 +784,37 @@ def list_files_with_rr_intervals():
 
     return files
 
-def write_ECG_parameters_to_csv(sex, hfd_of_ecg_1, age_indexes_for_id, age_ranges_for_id):
+def write_ECG_parameters_to_csv(sex, features):
     # ECG 1 and 2 simulationusly
 
-    with open('output/{0}_HFD_calculated.csv'.format(sex), 'w', newline='') as csvfile:
+    import csv
+    import os
+
+    filename = 'output/{0}_ECGs_features_calculated.csv'.format(sex)
+    file_exists = os.path.exists(filename)
+    file_empty = not file_exists or os.stat(filename).st_size == 0
+
+    with open('output/{0}_ECGs_features_calculated.csv'.format(sex), 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        # Додаємо заголовок
+        if file_empty:
+            spamwriter.writerow([
+                "ID", "Age Group", "Heart rate", "PQ", "PQ CoefVar",
+                "RR", "ST", "QRS", "P", "T", "P amplitude",
+                "R amplitude", "T amplitude"
+            ])
 
-        for key in age_indexes_for_id.keys():
-            spamwriter.writerow([key, age_indexes_for_id[key], age_ranges_for_id[key], localize_floats(hfd_of_ecg_1[key])])
+        for key in features.keys():
+            spamwriter.writerow([key, age_groups[features[key][0]],
+                                 features[1]["Heart rate"], features[1]["PQ"], features[1]["PQ CoefVar"],
+                                 features[1]["RR"], features[1]["ST"], features[1]["QRS"],
+                                 features[1]["P"], features[1]["T"], features[1]["P amplitude"],
+                                 features[1]["R amplitude"], features[1]["T amplitude"]])
+
+
+
+
 
 read_ECGs_annotation_data(False, True)
 
