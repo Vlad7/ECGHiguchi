@@ -269,8 +269,8 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 <
-            #if (line_count != 1 and line_count != 2):
-            #   continue
+            if (line_count < 28):
+                continue
 
             print ("Hello")
             # If Id is not available
@@ -305,15 +305,16 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
                 features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
+                id = row[0]
+                age_category = row[1]
+
                 if row[2] == '0':
                     #ECG dictionary with id as key and list as value with age category, sex, ECG features
-                    ECGs_features_male = [row[0], row[1], features]
-                    write_ECG_parameters_to_csv('male', ECGs_features_male)
+                    write_ECG_parameters_to_csv('male', id, age_category, features)
 
                 if row[2] == '1':
                     # ECG dictionary with id as key and list as value with age category, sex, ECG features
-                    ECGs_features_female[row[0]] = [row[0], row[1], features]
-                    write_ECG_parameters_to_csv('female', ECGs_features_female)
+                    write_ECG_parameters_to_csv('female', id, age_category, features)
 
                 # Припустимо, ми аналізуємо перші три серцевих цикли на графіку:
 
@@ -406,7 +407,7 @@ def calculate_HCF(r_peaks):
 
     intervals = np.diff(r_peaks) # Находим разности между последовательными пиками
 
-    # Рассчитываем средний интервал (в секундах)
+    # Рассчитываем средний интервал (в милисекундах)
     average_interval = np.mean(intervals)
 
     # Рассчитываем частоту сердечных сокращений (в ударах в минуту)
@@ -784,7 +785,7 @@ def list_files_with_rr_intervals():
 
     return files
 
-def write_ECG_parameters_to_csv(sex, features):
+def write_ECG_parameters_to_csv(sex, id, age_range, features):
     # ECG 1 and 2 simulationusly
 
     import csv
@@ -794,7 +795,7 @@ def write_ECG_parameters_to_csv(sex, features):
     file_exists = os.path.exists(filename)
     file_empty = not file_exists or os.stat(filename).st_size == 0
 
-    with open('output/{0}_ECGs_features_calculated.csv'.format(sex), 'w', newline='') as csvfile:
+    with open('output/{0}_ECGs_features_calculated.csv'.format(sex), 'a', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=';',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         # Додаємо заголовок
@@ -805,12 +806,12 @@ def write_ECG_parameters_to_csv(sex, features):
                 "R amplitude", "T amplitude"
             ])
 
-        for key in features.keys():
-            spamwriter.writerow([key, age_groups[features[key][0]],
-                                 features[1]["Heart rate"], features[1]["PQ"], features[1]["PQ CoefVar"],
-                                 features[1]["RR"], features[1]["ST"], features[1]["QRS"],
-                                 features[1]["P"], features[1]["T"], features[1]["P amplitude"],
-                                 features[1]["R amplitude"], features[1]["T amplitude"]])
+
+        spamwriter.writerow([id, age_groups[age_range],
+                            features["Heart rate"], features["PQ"], features["PQ CoefVar"],
+                            features["RR"], features["ST"], features["QRS"],
+                            features["P"], features["T"], features["P amplitude"],
+                            features["R amplitude"], features["T amplitude"]])
 
 
 
