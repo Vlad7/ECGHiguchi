@@ -102,7 +102,7 @@ def open_record_wfdb(id, min_point, max_point, remotely):
 #######################################################################################################################
 #################################### EXTRACTING RR INTERVALS ##########################################################
 #######################################################################################################################
-def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
+def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id, show_graphics):
     """BIO SPPY library for extracting RR-intervals from ECG signal
         input:
             signal - ECG signal
@@ -121,7 +121,7 @@ def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id):
     extended_signal = np.pad(signal, (500, 500), mode='edge')
 
     # Для виявлення R-піків використовується бібліотека biosppy
-    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=True)
+    out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=show_graphics)
     r_peaks = out['rpeaks']  # Отримання індексів R-піків
 
     #Відфільтрований сигнал, відступаємо від початку 500 і від кінця 500 (обернена операція до np.pad)
@@ -268,8 +268,8 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
             if (row[0] not in ids_with_variability):
                 continue
-            # 780 - 800; 1081 <
-            if (line_count < 28):
+            # 780 - 800; 1081 < !!!! 42
+            if (line_count < 109):
                 continue
 
             print ("Hello")
@@ -294,16 +294,34 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 # Частота дискретизації
                 sampling_rate = 1000
 
+                #To show graphics
+                show_graphics = True
+
                 # Filter signal to cleaned and detect r_peaks
                 cleaned_signal, r_peaks = extract_RR_intervals_time_series_and_plot_them(ecg_signal,
-                                                sampling_rate, row[0])
+                                               sampling_rate, row[0], show_graphics)
+                if (show_graphics):
+                    print(cleaned_signal)
+                    print("Signal length:", len(cleaned_signal))
+
+                    print("First and last R-peaks:", r_peaks[0], r_peaks[-1])
+
+                    import matplotlib.pyplot as plt
+                    print(f"R-peaks: {r_peaks}")
+                    print(f"Cleaned signal length: {len(cleaned_signal)}")
+                    plt.plot(cleaned_signal)
+                    plt.scatter(r_peaks, cleaned_signal[r_peaks], color='red')
+                    plt.show()
+
 
                 # Next, use NeuroKit for P, Q, S, T (around R)
                 # Delineate the ECG signal using neurokit2, cwt with hight precision, for quicker use dwt
                 _, waves_peaks = nk.ecg_delineate(cleaned_signal, r_peaks,
-                                                 sampling_rate=sampling_rate, method="cwt", show=True)
+                                                 sampling_rate=sampling_rate, method="dwt", show=show_graphics)
 
-                features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
+                waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
+
+
 
                 id = row[0]
                 age_category = row[1]
@@ -319,7 +337,8 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 # Припустимо, ми аналізуємо перші три серцевих цикли на графіку:
 
                 count_plot = 3
-                plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot)
+                if show_graphics:
+                    plot_ECG_parameters(cleaned_signal, waves, count_plot)
 
 
 
@@ -463,11 +482,12 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     r_peaks = r_peaks[r_peaks.first_valid_index():r_peaks.last_valid_index() + 1]
 
+
     ###############################################################################
     # Нужно найти для каждого P соответствующий R позже него, и тогда всё будет ок.
 
     index_from = 0
-    minimal_p_start_wave = p_start_waves[0]
+    minimal_p_start_wave = p_start_waves.iloc[0]
 
     for peak in r_peaks:
         if peak > minimal_p_start_wave:
@@ -495,16 +515,30 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     minimal_r_start_wave = r_peaks.iloc[0]
 
-    index_from = 0
+    index_start_from = 0
 
     for t_wave in t_start_waves:
         if t_wave > minimal_r_start_wave:
             break
-        index_from += 1
+        index_start_from += 1
 
-    t_start_waves = t_start_waves[index_from:]
-    t_peaks = t_peaks[index_from:]
-    t_end_waves  = t_end_waves[index_from:]
+    index_peak_from = 0
+
+    for t_wave in t_peaks:
+        if t_wave > minimal_r_start_wave:
+            break
+        index_peak_from += 1
+
+    index_end_from = 0
+
+    for t_wave in t_end_waves:
+        if t_wave > minimal_r_start_wave:
+            break
+        index_end_from += 1
+
+    t_start_waves = t_start_waves[index_start_from:]
+    t_peaks = t_peaks[index_peak_from:]
+    t_end_waves  = t_end_waves[index_end_from:]
 
     min_length = min(len(r_peaks), len(t_start_waves))
 
@@ -552,6 +586,11 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     t_start_waves = t_start_waves[mask]
     t_end_waves = t_end_waves[mask]
     ###########################################################
+    waves = {"ECG_P_Onsets": p_start_waves, "ECG_P_Peaks": p_peaks, "ECG_P_Offsets": p_end_waves,
+             "ECG_Q_Peaks": q_waves,
+             "ECG_R_Peaks": r_peaks, "ECG_S_Peaks": s_waves, "ECG_T_Onsets": t_start_waves, "ECG_T_Peaks": t_peaks,
+             "ECG_T_Offsets": t_end_waves}
+
     ECG_PARAMETERS = {}
 
     p_duration = find_P_interval(p_start_waves, p_end_waves)    #!!!
@@ -608,10 +647,12 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print("T duration: ", t_duration)
     ECG_PARAMETERS["T"] = t_duration
 
+    print(p_peaks.min(), p_peaks.max(), len(cleaned_signal))
+
     #9-th, 10-th and 11-th parameter
-    p_amplitude = np.mean(cleaned_signal[p_peaks])
-    r_amplitude = np.mean(cleaned_signal[r_peaks])
-    t_amplitude = np.mean(cleaned_signal[t_peaks])
+    p_amplitude = np.mean(cleaned_signal[p_peaks.to_numpy().astype(int)])
+    r_amplitude = np.mean(cleaned_signal[r_peaks.to_numpy().astype(int)])
+    t_amplitude = np.mean(cleaned_signal[t_peaks.to_numpy().astype(int)])
 
     print("P amplitude: ", p_amplitude)
     print("R amplitude: ", r_amplitude)
@@ -651,7 +692,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     #print(p_start_waves)
     # Видаляємо NaN
     #pr_intervals = pr_intervals[~np.isnan(pr_intervals)]
-    return ECG_PARAMETERS
+    return waves, ECG_PARAMETERS
 
 
 def find_P_interval(p_start_waves, p_end_waves):
@@ -686,7 +727,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
     return t_duration
 
-def plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot):
+def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
     signal = cleaned_signal[:4000]
     x = np.arange(len(signal))
@@ -694,8 +735,16 @@ def plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot):
     # Отрисовка сигнала
     plt.figure(figsize=(12, 6))
     plt.plot(x, signal, label="ECG", color="black")
-    plt.scatter(x[waves_peaks['ECG_T_Peaks'][:count_plot]],
-                signal[waves_peaks['ECG_T_Peaks'][:count_plot]], color='red', label="R-peaks")
+    plt.scatter(x[waves_peaks["ECG_R_Peaks"][:count_plot]],
+                signal[waves_peaks["ECG_R_Peaks"][:count_plot]], color='red', label="R-peaks")
+
+    print(waves_peaks["ECG_P_Peaks"][:count_plot])
+    p_peaks = np.array(waves_peaks["ECG_P_Peaks"][:count_plot]).astype(int)
+    print(p_peaks)
+
+    plt.scatter(x[p_peaks], signal[p_peaks], color='green', label="P-peaks")
+    plt.scatter(x[waves_peaks["ECG_T_Peaks"].to_numpy().astype(int)[:count_plot]],
+                signal[waves_peaks["ECG_T_Peaks"].to_numpy().astype(int)[:count_plot]], color='blue', label="T-peaks")
 
     # Изолиния
     plt.axhline(y=0, color="gray", linestyle="--", linewidth=1, label="Изолиния")
@@ -710,7 +759,7 @@ def plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot):
             plt.axvline(x=i, color=color, linestyle=style, linewidth=1.5)
         # Add only once in legend
         if len(event_indices) > 0:
-            plt.axvline(x=event_indices[0], color=color, linestyle=style, label=label, linewidth=1.5)
+            plt.axvline(x=event_indices.iloc[0], color=color, linestyle=style, label=label, linewidth=1.5)
 
     # Пример: замените списки на ваши
     mark_events(waves_peaks["ECG_P_Onsets"][:count_plot], "green", "P начало")
@@ -718,7 +767,7 @@ def plot_ECG_parameters(cleaned_signal, waves_peaks, r_peaks, count_plot):
     mark_events(waves_peaks["ECG_P_Offsets"][:count_plot], "green", "P конец", style=':')
 
     mark_events(waves_peaks['ECG_Q_Peaks'][:count_plot], "blue", "Q", style='--')
-    mark_events(r_peaks[:count_plot], "red", "R peak", style='--')
+    mark_events(waves_peaks['ECG_R_Peaks'][:count_plot], "red", "R peak", style='--')
     mark_events(waves_peaks['ECG_S_Peaks'][:count_plot], "blue", "S", style='--')
 
     mark_events(waves_peaks["ECG_T_Onsets"][:count_plot], "purple", "T начало")
