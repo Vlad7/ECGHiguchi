@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 109):
+            if (line_count < 261):
                 continue
 
             print ("Hello")
@@ -310,16 +310,36 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     print(f"R-peaks: {r_peaks}")
                     print(f"Cleaned signal length: {len(cleaned_signal)}")
                     plt.plot(cleaned_signal)
-                    plt.scatter(r_peaks, cleaned_signal[r_peaks], color='red')
+
+                    valid_r_peaks = r_peaks[r_peaks < len(cleaned_signal)]
+
+                    plt.scatter(valid_r_peaks, cleaned_signal[valid_r_peaks], color='red')
                     plt.show()
+
+
+
+                import biosppy
+
+                # Обработка ЭКГ
+                #out = biosppy.signals.ecg.ecg(signal=ecg_signal, sampling_rate=500, show=True)
+
+                #t = biosppy.signals.ecg.getTPositions(ecg_proc=out, show=True)
+                # R-пики: out['rpeaks']
+
+                #for x in t[2]:
+                #    print(x)
+
+                margin = 200  # or adjust based on your delineation window size
+                valid_r_peaks = r_peaks[(r_peaks > margin) & (r_peaks < len(cleaned_signal) - margin)]
 
 
                 # Next, use NeuroKit for P, Q, S, T (around R)
                 # Delineate the ECG signal using neurokit2, cwt with hight precision, for quicker use dwt
-                _, waves_peaks = nk.ecg_delineate(cleaned_signal, r_peaks,
-                                                 sampling_rate=sampling_rate, method="dwt", show=show_graphics)
+                _, waves_peaks = nk.ecg_delineate(cleaned_signal, valid_r_peaks,
+                                                 sampling_rate=sampling_rate, method="cwt", show=show_graphics)
 
-                waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
+
+                isoline, waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
 
 
@@ -336,8 +356,9 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
                 # Припустимо, ми аналізуємо перші три серцевих цикли на графіку:
 
-                count_plot = 3
+                count_plot = 30
                 if show_graphics:
+                    cleaned_signal = cleaned_signal - isoline
                     plot_ECG_parameters(cleaned_signal, waves, count_plot)
 
 
@@ -421,6 +442,32 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 """
 
 
+def estimate_isoline(ecg_signal, p_end_indices, q_start_indices):
+    """
+    Оценивает уровень изолинии по сегментам PQ.
+
+    ecg_signal: массив амплитуд ЭКГ
+    p_end_indices: индексы конца зубца P
+    q_start_indices: индексы начала зубца Q
+    """
+    p_end_indices = p_end_indices.astype(int)
+    q_start_indices = q_start_indices.astype(int)
+
+    isoline_values = []
+
+    for p_end, q_start in zip(p_end_indices, q_start_indices):
+        if q_start > p_end:
+            segment = ecg_signal[p_end:q_start]
+            if len(segment) > 0:
+                mean_value = np.mean(segment)
+                isoline_values.append(mean_value)
+
+    if isoline_values:
+        global_isoline = np.mean(isoline_values)
+        return global_isoline
+    else:
+        return 0.0  # если не найдено подходящих сегментов
+
 def calculate_HCF(r_peaks):
     # Вычисляем временные интервалы между пиками R
 
@@ -475,28 +522,29 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     p_peaks = p_peaks[p_peaks.first_valid_index():p_peaks.last_valid_index() + 1]
     p_end_waves = p_end_waves[p_end_waves.first_valid_index():p_end_waves.last_valid_index() + 1]
     q_waves = q_waves[q_waves.first_valid_index():q_waves.last_valid_index() + 1]
+    r_peaks = r_peaks[r_peaks.first_valid_index():r_peaks.last_valid_index() + 1]
     s_waves = s_waves[s_waves.first_valid_index():s_waves.last_valid_index() + 1]
     t_start_waves = t_start_waves[t_start_waves.first_valid_index():t_start_waves.last_valid_index() + 1]
     t_peaks = t_peaks[t_peaks.first_valid_index():t_peaks.last_valid_index() + 1]
     t_end_waves = t_end_waves[t_end_waves.first_valid_index():t_end_waves.last_valid_index() + 1]
 
-    r_peaks = r_peaks[r_peaks.first_valid_index():r_peaks.last_valid_index() + 1]
 
 
     ###############################################################################
     # Нужно найти для каждого P соответствующий R позже него, и тогда всё будет ок.
 
-    index_from = 0
+    peak_q = 0
     minimal_p_start_wave = p_start_waves.iloc[0]
 
-    for peak in r_peaks:
+    for peak in q_waves:
+        peak_q = peak
         if peak > minimal_p_start_wave:
             break
-        index_from +=1
 
-    q_waves = q_waves[index_from:]
-    r_peaks = r_peaks[index_from:]
-    s_waves = s_waves[index_from:]
+
+    q_waves = q_waves[q_waves >= peak_q]
+    r_peaks = r_peaks[r_peaks >= peak_q]
+    s_waves = s_waves[s_waves >= peak_q]
 
     min_length = min(len(r_peaks), len(p_start_waves))
 
@@ -509,6 +557,32 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     s_waves = s_waves[:min_length]
 
 
+    mask_t_start = set(np.where(~np.isnan(t_start_waves))[0])
+    mask_t_peaks = set(np.where(~np.isnan(t_peaks))[0])
+    mask_t_end = set(np.where(~np.isnan(t_end_waves))[0])
+
+    mask3 = mask_t_start.intersection(mask_t_peaks)
+    mask4 = mask3.intersection(mask_t_end)
+    common_indices_sorted = sorted(mask4)
+
+
+    p_start_waves = p_start_waves.reset_index(drop=True)
+    p_end_waves = p_end_waves.reset_index(drop=True)
+    q_waves = q_waves.reset_index(drop=True)
+    r_peaks = r_peaks.reset_index(drop=True)
+    s_waves = s_waves.reset_index(drop=True)
+    t_start_waves = t_start_waves.reset_index(drop=True)
+    t_end_waves = t_end_waves.reset_index(drop=True)
+
+    p_start_waves = p_start_waves[common_indices_sorted]
+    p_end_waves = p_end_waves[common_indices_sorted]
+    q_waves = q_waves[common_indices_sorted]
+    r_peaks = r_peaks[common_indices_sorted]
+    s_waves = s_waves[common_indices_sorted]
+    t_start_waves = t_start_waves[common_indices_sorted]
+    t_peaks = t_peaks[common_indices_sorted]
+    t_end_waves = t_end_waves[common_indices_sorted]
+    
 
     ###############################################################################
     # Нужно найти для каждого R соответствующий T позже него, и тогда всё будет ок.
@@ -585,11 +659,50 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     s_waves = s_waves[mask]
     t_start_waves = t_start_waves[mask]
     t_end_waves = t_end_waves[mask]
+
+    mask2 = ~np.isnan(p_end_waves)
+    mask2 = mask2.reset_index(drop=True)
+
+    p_start_waves = p_start_waves.reset_index(drop=True)
+    p_end_waves = p_end_waves.reset_index(drop=True)
+    q_waves = q_waves.reset_index(drop=True)
+    r_peaks = r_peaks.reset_index(drop=True)
+    s_waves = s_waves.reset_index(drop=True)
+    t_start_waves = t_start_waves.reset_index(drop=True)
+    t_end_waves = t_end_waves.reset_index(drop=True)
+
+    p_start_waves = p_start_waves[mask2]
+    p_end_waves = p_end_waves[mask2]
+    q_waves = q_waves[mask2]
+    r_peaks = r_peaks[mask2]
+    s_waves = s_waves[mask2]
+    t_start_waves = t_start_waves[mask2]
+    t_end_waves = t_end_waves[mask2]
     ###########################################################
     waves = {"ECG_P_Onsets": p_start_waves, "ECG_P_Peaks": p_peaks, "ECG_P_Offsets": p_end_waves,
              "ECG_Q_Peaks": q_waves,
              "ECG_R_Peaks": r_peaks, "ECG_S_Peaks": s_waves, "ECG_T_Onsets": t_start_waves, "ECG_T_Peaks": t_peaks,
              "ECG_T_Offsets": t_end_waves}
+
+    # Примерные данные
+    time = np.linspace(0, 4000, len(cleaned_signal))  # Время в мс
+    p_end_indices = p_end_waves  # Индексы концов зубцов P
+    q_start_indices = q_waves  # Индексы началов Q
+
+    isoline = estimate_isoline(cleaned_signal, p_end_indices, q_start_indices)
+    print(f"Оценённая изолиния: {isoline:.4f} мВ")
+
+    # Визуализация
+    plt.plot(time, cleaned_signal, label='ECG')
+    plt.axhline(y=isoline, color='gray', linestyle='--', label='Изолиния')
+    plt.legend()
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Amplitude')
+    plt.title('Изолиния на основе PQ-сегмента')
+    plt.grid()
+    plt.show()
+
+    #cleaned_signal = cleaned_signal - isoline
 
     ECG_PARAMETERS = {}
 
@@ -692,7 +805,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     #print(p_start_waves)
     # Видаляємо NaN
     #pr_intervals = pr_intervals[~np.isnan(pr_intervals)]
-    return waves, ECG_PARAMETERS
+    return isoline, waves, ECG_PARAMETERS
 
 
 def find_P_interval(p_start_waves, p_end_waves):
@@ -729,7 +842,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
 def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
-    signal = cleaned_signal[:4000]
+    signal = cleaned_signal[:50000]
     x = np.arange(len(signal))
 
     # Отрисовка сигнала

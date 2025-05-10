@@ -8,4 +8,44 @@
 0090
 0104
 0106
-0109                                                                                                                   
+0109             
+0118     
+0131
+0134
+0142 - isoline error
+0143 - isoline error
+0144 - isoline error
+0145 
+0146
+0151
+0152 - error detecting S
+0154
+0157
+0159
+0166
+0169 - error detecting
+0171- isoline error
+0174
+0183 - index out of bounds
+0184 - error detecting
+0188- isoline error
+0189 - error
+0192- isoline error
+0196- error detecting
+0197 - error detecting   
+0198 - error
+0201 - error detecting    
+0202 
+0203       - isoline error   
+0205    
+0208
+0209
+0210 - error
+0212
+0218              
+0222 
+0224   - isoline error
+0228
+0231 - wrong               
+0234 - error detecting      
+0260 - extrasistola
