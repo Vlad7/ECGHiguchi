@@ -49,3 +49,5 @@
 0231 - wrong               
 0234 - error detecting      
 0260 - extrasistola
+0263  - first peak error
+0297 - u peak

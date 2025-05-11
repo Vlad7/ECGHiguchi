@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 261):
+            if (line_count < 346):
                 continue
 
             print ("Hello")
@@ -354,7 +354,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     # ECG dictionary with id as key and list as value with age category, sex, ECG features
                     write_ECG_parameters_to_csv('female', id, age_category, features)
 
-                # Припустимо, ми аналізуємо перші три серцевих цикли на графіку:
+                # Припустимо, ми аналізуємо перші тридцять серцевих циклів на графіку:
 
                 count_plot = 30
                 if show_graphics:
@@ -512,12 +512,48 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     p_peaks = pd.Series(waves_peaks["ECG_P_Peaks"])
     p_end_waves   = pd.Series(waves_peaks["ECG_P_Offsets"])
     q_waves = pd.Series(waves_peaks["ECG_Q_Peaks"])
+    r_peaks = pd.Series(r_peaks)
     s_waves = pd.Series(waves_peaks["ECG_S_Peaks"])
     t_start_waves = pd.Series(waves_peaks["ECG_T_Onsets"])
     t_peaks = pd.Series(waves_peaks["ECG_T_Peaks"])
     t_end_waves =   pd.Series(waves_peaks["ECG_T_Offsets"])
-    r_peaks = pd.Series(r_peaks)
 
+    cycles = []
+
+    # Задать временное окно вокруг R-пика, в котором ищем другие пики (в секундах или отсчётах)
+    window = 300  # например, +/-150 отсчётов
+
+    for r in r_peaks.dropna():
+        r = int(r)
+
+        # Найти ближайшие P, Q, S, T пики в пределах окна
+        p_start = p_start_waves[(p_start_waves >= r - window) & (p_start_waves < r)].dropna()
+        p_peak = p_peaks[(p_peaks >= r - window) & (p_peaks < r)].dropna()
+        p_end = p_end_waves[(p_end_waves >= r - window) & (p_end_waves < r)].dropna()
+
+        q = q_waves[(q_waves >= r - 200) & (q_waves < r)].dropna()  # Q ближе
+        s = s_waves[(s_waves > r) & (s_waves <= r + 200)].dropna()
+
+        t_start = t_start_waves[(t_start_waves > r) & (t_start_waves <= r + window + 300)].dropna()
+        t_peak = t_peaks[(t_peaks > r) & (t_peaks <= r + window + 300)].dropna()
+        t_end = t_end_waves[(t_end_waves > r) & (t_end_waves <= r + window + 300)].dropna()
+
+        # Проверяем, все ли пики найдены
+        if not (
+                p_start.empty or p_peak.empty or p_end.empty or q.empty or s.empty or t_start.empty or t_peak.empty or t_end.empty):
+            cycles.append({
+                "P_start": p_start.iloc[0],
+                "P_peak": p_peak.iloc[0],
+                "P_end": p_end.iloc[0],
+                "Q": q.iloc[0],
+                "R": r,
+                "S": s.iloc[0],
+                "T_start": t_start.iloc[0],
+                "T_peak": t_peak.iloc[0],
+                "T_end": t_end.iloc[0],
+            })
+
+    """
     p_start_waves = p_start_waves[p_start_waves.first_valid_index():p_start_waves.last_valid_index() + 1]
     p_peaks = p_peaks[p_peaks.first_valid_index():p_peaks.last_valid_index() + 1]
     p_end_waves = p_end_waves[p_end_waves.first_valid_index():p_end_waves.last_valid_index() + 1]
@@ -527,9 +563,9 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     t_start_waves = t_start_waves[t_start_waves.first_valid_index():t_start_waves.last_valid_index() + 1]
     t_peaks = t_peaks[t_peaks.first_valid_index():t_peaks.last_valid_index() + 1]
     t_end_waves = t_end_waves[t_end_waves.first_valid_index():t_end_waves.last_valid_index() + 1]
+    """
 
-
-
+    """
     ###############################################################################
     # Нужно найти для каждого P соответствующий R позже него, и тогда всё будет ок.
 
@@ -626,6 +662,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     p_start_waves = p_start_waves[:min_length]
     p_peaks = p_peaks[:min_length]
     p_end_waves = p_end_waves[:min_length]
+    """
     ################################################################################
     # Можливо перевірити випадок, коли останні значення не співпадають
 
@@ -637,6 +674,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print("T start waves: ", t_start_waves)
     print("T end waves: ", t_end_waves)
 
+    """
     ################### Mask NaN values #######################
     mask = ~np.isnan(p_start_waves)
     mask = mask.reset_index(drop=True)
@@ -679,15 +717,50 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     t_start_waves = t_start_waves[mask2]
     t_end_waves = t_end_waves[mask2]
     ###########################################################
+    """
+
+
+
+    # Инициализируем словарь с пустыми списками для каждого типа пика
+    waves = {
+        "ECG_P_Onsets": [],
+        "ECG_P_Peaks": [],
+        "ECG_P_Offsets": [],
+        "ECG_Q_Peaks": [],
+        "ECG_R_Peaks": [],
+        "ECG_S_Peaks": [],
+        "ECG_T_Onsets": [],
+        "ECG_T_Peaks": [],
+        "ECG_T_Offsets": []
+    }
+
+    # Заполняем словарь данными из каждого цикла
+    for cycle in cycles:
+        waves["ECG_P_Onsets"].append(cycle["P_start"])
+        waves["ECG_P_Peaks"].append(cycle["P_peak"])
+        waves["ECG_P_Offsets"].append(cycle["P_end"])
+        waves["ECG_Q_Peaks"].append(cycle["Q"])
+        waves["ECG_R_Peaks"].append(cycle["R"])
+        waves["ECG_S_Peaks"].append(cycle["S"])
+        waves["ECG_T_Onsets"].append(cycle["T_start"])
+        waves["ECG_T_Peaks"].append(cycle["T_peak"])
+        waves["ECG_T_Offsets"].append(cycle["T_end"])
+
+    # Преобразуем списки в pd.Series
+    for key in waves:
+        waves[key] = pd.Series(waves[key])
+
+    """
     waves = {"ECG_P_Onsets": p_start_waves, "ECG_P_Peaks": p_peaks, "ECG_P_Offsets": p_end_waves,
              "ECG_Q_Peaks": q_waves,
              "ECG_R_Peaks": r_peaks, "ECG_S_Peaks": s_waves, "ECG_T_Onsets": t_start_waves, "ECG_T_Peaks": t_peaks,
              "ECG_T_Offsets": t_end_waves}
+    """
 
     # Примерные данные
     time = np.linspace(0, 4000, len(cleaned_signal))  # Время в мс
-    p_end_indices = p_end_waves  # Индексы концов зубцов P
-    q_start_indices = q_waves  # Индексы началов Q
+    p_end_indices = waves["ECG_P_Offsets"]  # Индексы концов зубцов P
+    q_start_indices = waves["ECG_Q_Peaks"]  # Индексы началов Q
 
     isoline = estimate_isoline(cleaned_signal, p_end_indices, q_start_indices)
     print(f"Оценённая изолиния: {isoline:.4f} мВ")
@@ -706,17 +779,17 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     ECG_PARAMETERS = {}
 
-    p_duration = find_P_interval(p_start_waves, p_end_waves)    #!!!
-    t_duration = find_T_interval(t_start_waves, t_end_waves)    #!!!
+    p_duration = find_P_interval(waves["ECG_P_Onsets"], waves["ECG_P_Offsets"])    #!!!
+    t_duration = find_T_interval(waves["ECG_T_Onsets"], waves["ECG_T_Offsets"])    #!!!
 
     ###############################################################################
     # Calculate heart contraction frequency - 1-st parameter (heart rate)
-    HCF = calculate_HCF(r_peaks)                        #!!!
+    HCF = calculate_HCF(waves["ECG_R_Peaks"])                        #!!!
     print("Heart rate: ",HCF)
     ECG_PARAMETERS["Heart rate"] = HCF
 
     ################################ Перевіряємо, чи PR інтервали однакові ###########################
-    corrected_pq_intervals = corrected_PQ_intervals(q_waves, p_start_waves)
+    corrected_pq_intervals = corrected_PQ_intervals(waves["ECG_Q_Peaks"], waves["ECG_P_Onsets"])
 
     # Перевіримо варіацію:
     std_dev = np.std(corrected_pq_intervals)
@@ -732,19 +805,19 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     ##################################################################################################
 
     # 4-th parameter (mean RR intervals)
-    mean_RR = mean_RR_interval(r_peaks)
+    mean_RR = mean_RR_interval(waves["ECG_R_Peaks"])
 
     print(f"Mean RR: ", mean_RR)
     ECG_PARAMETERS["RR"] = mean_RR
 
     # 5-th parameter (mean ST interval)
-    mean_ST = mean_ST_interval(s_waves, t_start_waves)
+    mean_ST = mean_ST_interval(waves["ECG_S_Peaks"], waves["ECG_T_Onsets"])
 
     print(f"Mean ST segment: ", mean_ST)
     ECG_PARAMETERS["ST"] = mean_ST
 
     # 6-th parameter (QRS complex)
-    mean_QRS = mean_QRS_complex(q_waves, s_waves)
+    mean_QRS = mean_QRS_complex(waves["ECG_Q_Peaks"], waves["ECG_S_Peaks"])
 
     print("Mean QRS: ", mean_QRS)
     ECG_PARAMETERS["QRS"] = mean_QRS
@@ -763,9 +836,9 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     print(p_peaks.min(), p_peaks.max(), len(cleaned_signal))
 
     #9-th, 10-th and 11-th parameter
-    p_amplitude = np.mean(cleaned_signal[p_peaks.to_numpy().astype(int)])
-    r_amplitude = np.mean(cleaned_signal[r_peaks.to_numpy().astype(int)])
-    t_amplitude = np.mean(cleaned_signal[t_peaks.to_numpy().astype(int)])
+    p_amplitude = np.mean(cleaned_signal[waves["ECG_P_Peaks"].to_numpy().astype(int)])
+    r_amplitude = np.mean(cleaned_signal[waves["ECG_R_Peaks"].to_numpy().astype(int)])
+    t_amplitude = np.mean(cleaned_signal[waves["ECG_T_Peaks"].to_numpy().astype(int)])
 
     print("P amplitude: ", p_amplitude)
     print("R amplitude: ", r_amplitude)
@@ -842,7 +915,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
 def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
-    signal = cleaned_signal[:50000]
+    signal = cleaned_signal[:190000]
     x = np.arange(len(signal))
 
     # Отрисовка сигнала
