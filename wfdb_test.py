@@ -21,8 +21,8 @@ from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 346):
+            if (line_count < 152):
                 continue
 
             print ("Hello")
@@ -332,12 +332,14 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 margin = 200  # or adjust based on your delineation window size
                 valid_r_peaks = r_peaks[(r_peaks > margin) & (r_peaks < len(cleaned_signal) - margin)]
 
-
+                s_peaks = detect_s_peaks(valid_r_peaks, cleaned_signal)
                 # Next, use NeuroKit for P, Q, S, T (around R)
                 # Delineate the ECG signal using neurokit2, cwt with hight precision, for quicker use dwt
                 _, waves_peaks = nk.ecg_delineate(cleaned_signal, valid_r_peaks,
                                                  sampling_rate=sampling_rate, method="cwt", show=show_graphics)
-
+                # Подменяем S-пики на свои:
+                waves_peaks["ECG_S_Peaks"] = np.array(s_peaks)
+                # Визуализируем с кастомными S-пиками:
 
                 isoline, waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
@@ -440,7 +442,22 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     writer.writeheader()
                     writer.writerows(ecg_attributes)
                 """
-
+def detect_s_peaks(r_peaks, ecg_signal):
+    s_peaks = []
+    for r_peak in r_peaks:
+        relative = 0
+        point = ecg_signal[r_peak + relative]
+        while point >= 0:
+            relative += 1
+            point = ecg_signal[r_peak + relative]
+        while True:
+            if ecg_signal[r_peak+relative + 1] - ecg_signal[r_peak+relative] < 0:
+                relative+=1
+            else:
+                point = ecg_signal[r_peak + relative]
+                break
+        s_peaks.append(point)
+    return s_peaks
 
 def estimate_isoline(ecg_signal, p_end_indices, q_start_indices):
     """
