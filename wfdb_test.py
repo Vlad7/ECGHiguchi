@@ -338,7 +338,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 _, waves_peaks = nk.ecg_delineate(cleaned_signal, valid_r_peaks,
                                                  sampling_rate=sampling_rate, method="cwt", show=show_graphics)
                 # Подменяем S-пики на свои:
-                waves_peaks["ECG_S_Peaks"] = np.array(s_peaks)
+                #waves_peaks["ECG_S_Peaks"] = np.array(s_peaks)
                 # Визуализируем с кастомными S-пиками:
 
                 isoline, waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
