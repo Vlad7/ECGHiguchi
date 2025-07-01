@@ -102,12 +102,12 @@ def open_record_wfdb(id, min_point, max_point, remotely):
 #######################################################################################################################
 #################################### EXTRACTING RR INTERVALS ##########################################################
 #######################################################################################################################
-def extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, id, show_graphics):
-    """BIO SPPY library for extracting RR-intervals from ECG signal
+def extract_cleaned_signal_and_R_peaks(signal, sampling_rate, show_graphics):
+    """BIO SPPY library for extracting R-peaks from ECG signal
         input:
             signal - ECG signal
             sampling_rate - sampling_rate
-            Id - id of record
+            show_graphics - показати графік
 
         output:
 
@@ -298,8 +298,8 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 show_graphics = True
 
                 # Filter signal to cleaned and detect r_peaks
-                cleaned_signal, r_peaks = extract_RR_intervals_time_series_and_plot_them(ecg_signal,
-                                               sampling_rate, row[0], show_graphics)
+                cleaned_signal, r_peaks = extract_cleaned_signal_and_R_peaks(ecg_signal,
+                                               sampling_rate, show_graphics)
                 if (show_graphics):
                     print(cleaned_signal)
                     print("Signal length:", len(cleaned_signal))
@@ -332,14 +332,13 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 margin = 200  # or adjust based on your delineation window size
                 valid_r_peaks = r_peaks[(r_peaks > margin) & (r_peaks < len(cleaned_signal) - margin)]
 
-                s_peaks = detect_s_peaks(valid_r_peaks, cleaned_signal)
+
                 # Next, use NeuroKit for P, Q, S, T (around R)
                 # Delineate the ECG signal using neurokit2, cwt with hight precision, for quicker use dwt
                 _, waves_peaks = nk.ecg_delineate(cleaned_signal, valid_r_peaks,
                                                  sampling_rate=sampling_rate, method="cwt", show=show_graphics)
-                # Подменяем S-пики на свои:
-                #waves_peaks["ECG_S_Peaks"] = np.array(s_peaks)
-                # Визуализируем с кастомными S-пиками:
+
+
 
                 isoline, waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
@@ -425,7 +424,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 # Частота дискретизації
                 #sampling_rate = 1000
 
-                #r_peaks, rr_intervals = extract_RR_intervals_time_series_and_plot_them(signal, sampling_rate, row[0])
+                #r_peaks, rr_intervals = extract_cleaned_signal_and_R_peaks(signal, sampling_rate, row[0])
 
                 """
                 import csv
@@ -442,21 +441,100 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     writer.writeheader()
                     writer.writerows(ecg_attributes)
                 """
+
+
+import numpy as np
+import scipy.signal as signal
+import matplotlib.pyplot as plt
+import wfdb
+
+
+def bandpass_filter(signal_data, fs, lowcut=0.5, highcut=40, order=3):
+    nyq = 0.5 * fs
+    b, a = signal.butter(order, [lowcut / nyq, highcut / nyq], btype='band')
+    return signal.filtfilt(b, a, signal_data)
+
+
+def find_r_peaks(ecg_signal, fs):
+    # Можно заменить на Pan-Tompkins или WFDB аннотацию
+    distance = int(0.6 * fs)  # минимум 600 мс между пиками
+    peaks, _ = signal.find_peaks(ecg_signal, distance=distance, height=np.mean(ecg_signal) + 0.3 * np.std(ecg_signal))
+    return peaks
+
+
+def estimate_isoline2(segment):
+    return np.average(segment)
+
+"""
+def find_p_wave_end(segment, isoline, threshold=0.02):
+    # Находит, где сигнал "возвращается" к изолинии
+    diff = np.abs(segment - isoline)
+    for i in range(len(diff) - 1, -1, -1):
+        if diff[i] > threshold:
+            return i
+    return None
+"""
+def find_p_wave_end(segment, isoline, threshold=0.02):
+    # Находит, где сигнал "возвращается" к изолинии
+
+    diff = segment - isoline
+    for i in range(len(diff) - 1 - 50, 0, -1):
+        if diff[i] > threshold:
+            return i
+    return None
+
+def analyze_p_wave(signal_data, fs, r_peaks, window_before_r=0.2):
+    p_ends = []
+    for r in r_peaks:
+        start = int(r - window_before_r * fs)
+        if start < 0:
+            continue
+        segment = signal_data[start:r]
+
+        # Итерации
+        isoline = estimate_isoline2(segment)
+        for _ in range(3):
+            p_end = find_p_wave_end(segment, isoline)
+            if p_end is not None:
+                sub_segment = segment[p_end:]
+                isoline = estimate_isoline2(sub_segment)
+
+        p_ends.append(start + p_end if p_end else None)
+
+    return p_ends
+
+
+
+
+
+
+
 def detect_s_peaks(r_peaks, ecg_signal):
+    """Detection S peaks"""
     s_peaks = []
+    s_peaks_points = []
     for r_peak in r_peaks:
+
         relative = 0
-        point = ecg_signal[r_peak + relative]
+        index = r_peak
+        point = ecg_signal[index]
+
+        # Go to the point under or equal isoline
         while point >= 0:
             relative += 1
-            point = ecg_signal[r_peak + relative]
+            index = r_peak + relative
+            point = ecg_signal[index]
+
         while True:
-            if ecg_signal[r_peak+relative + 1] - ecg_signal[r_peak+relative] < 0:
+            index = r_peak + relative
+            if ecg_signal[index + 1] - ecg_signal[index] < 0:
                 relative+=1
             else:
-                point = ecg_signal[r_peak + relative]
+                point = ecg_signal[index]
                 break
-        s_peaks.append(point)
+        s_peaks.append(index)
+        s_peaks_points.append(point)
+
     return s_peaks
 
 def estimate_isoline(ecg_signal, p_end_indices, q_start_indices):
@@ -776,11 +854,48 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
 
     # Примерные данные
     time = np.linspace(0, 4000, len(cleaned_signal))  # Время в мс
+
+    # ===== MAIN =====
+    #record_name = 'sample-data/100'  # укажи свой путь к MIT-BIH записи
+    #record = wfdb.rdrecord(record_name)
+    #fs = record.fs
+    #signal_data = record.p_signal[:, 0]  # первый канал
+
+    # Фильтрация
+    #filtered = bandpass_filter(signal_data, fs)
+
+    # Поиск R-пиков
+    #r_peaks = find_r_peaks(filtered, fs)
+
+    # Анализ волны P
+    p_wave_ends = analyze_p_wave(cleaned_signal, 1000, waves["ECG_R_Peaks"])
+
+    # ===== Визуализация =====
+    plt.figure(figsize=(12, 4))
+    plt.plot(cleaned_signal, label="ECG")
+    plt.plot(r_peaks, cleaned_signal[r_peaks], 'ro', label='R-peaks')
+    for p in p_wave_ends:
+        if p:
+            plt.axvline(x=p, color='g', linestyle='--', alpha=0.6)
+    plt.legend()
+    plt.title("Конец P-волны (зеленые линии)")
+    plt.xlabel("Samples")
+    plt.show()
+
+
     p_end_indices = waves["ECG_P_Offsets"]  # Индексы концов зубцов P
     q_start_indices = waves["ECG_Q_Peaks"]  # Индексы началов Q
 
+    # Обчислення ізолінії
     isoline = estimate_isoline(cleaned_signal, p_end_indices, q_start_indices)
     print(f"Оценённая изолиния: {isoline:.4f} мВ")
+    cleaned_signal = cleaned_signal - isoline
+    s_peaks = detect_s_peaks(waves["ECG_R_Peaks"], cleaned_signal)
+    # Подменяем S-пики на свои:
+    waves["ECG_S_Peaks"] = pd.Series(np.array(s_peaks))
+    # Визуализируем с кастомными S-пиками:
+
+
 
     # Визуализация
     plt.plot(time, cleaned_signal, label='ECG')
