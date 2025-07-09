@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 360):
+            if (line_count < 401):
                 continue
 
             print ("Hello")
@@ -884,7 +884,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     plt.xlabel("Samples")
     plt.show()
     """
-
+    p_start_indices = waves["ECG_P_Onsets"]
     p_end_indices = waves["ECG_P_Offsets"]  # Индексы концов зубцов P
     q_start_indices = waves["ECG_Q_Peaks"]  # Индексы началов Q
 
@@ -1055,7 +1055,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
 def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
-    signal = cleaned_signal[:350000]
+    signal = cleaned_signal[:460000]
     x = np.arange(len(signal))
 
     # Отрисовка сигнала
