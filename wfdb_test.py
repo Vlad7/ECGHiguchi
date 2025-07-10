@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 152):
+            if (line_count < 526):
                 continue
 
             print ("Hello")
@@ -339,8 +339,9 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                                                  sampling_rate=sampling_rate, method="cwt", show=show_graphics)
 
 
-
                 isoline, waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
+
+                #waves, features = calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks)
 
 
 
@@ -868,9 +869,10 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     #r_peaks = find_r_peaks(filtered, fs)
 
     # Анализ волны P
-    p_wave_ends = analyze_p_wave(cleaned_signal, 1000, waves["ECG_R_Peaks"])
+    #p_wave_ends = analyze_p_wave(cleaned_signal, 1000, waves["ECG_R_Peaks"])
 
     # ===== Визуализация =====
+    """
     plt.figure(figsize=(12, 4))
     plt.plot(cleaned_signal, label="ECG")
     plt.plot(r_peaks, cleaned_signal[r_peaks], 'ro', label='R-peaks')
@@ -881,22 +883,24 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     plt.title("Конец P-волны (зеленые линии)")
     plt.xlabel("Samples")
     plt.show()
-
+    """
 
     p_end_indices = waves["ECG_P_Offsets"]  # Индексы концов зубцов P
     q_start_indices = waves["ECG_Q_Peaks"]  # Индексы началов Q
 
     # Обчислення ізолінії
+    # Disabled isoline
     isoline = estimate_isoline(cleaned_signal, p_end_indices, q_start_indices)
-    print(f"Оценённая изолиния: {isoline:.4f} мВ")
+    #print(f"Оценённая изолиния: {isoline:.4f} мВ")
     cleaned_signal = cleaned_signal - isoline
-    s_peaks = detect_s_peaks(waves["ECG_R_Peaks"], cleaned_signal)
+    # !!! DISABLED S PEAKS detection
+    #s_peaks = detect_s_peaks(waves["ECG_R_Peaks"], cleaned_signal)
     # Подменяем S-пики на свои:
-    waves["ECG_S_Peaks"] = pd.Series(np.array(s_peaks))
+    #waves["ECG_S_Peaks"] = pd.Series(np.array(s_peaks))
     # Визуализируем с кастомными S-пиками:
 
 
-
+    """
     # Визуализация
     plt.plot(time, cleaned_signal, label='ECG')
     plt.axhline(y=isoline, color='gray', linestyle='--', label='Изолиния')
@@ -906,7 +910,7 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     plt.title('Изолиния на основе PQ-сегмента')
     plt.grid()
     plt.show()
-
+    """
     #cleaned_signal = cleaned_signal - isoline
 
     ECG_PARAMETERS = {}
@@ -1012,10 +1016,14 @@ def calculate_ECG_features(cleaned_signal, r_peaks, waves_peaks):
     #pr_intervals = pr_intervals[~np.isnan(pr_intervals)]
     return isoline, waves, ECG_PARAMETERS
 
+    #return waves, ECG_PARAMETERS
+
 
 def find_P_interval(p_start_waves, p_end_waves):
     # Отримання початкової та кінцевої точок P-інтервалу для всіх серцевих циклів,
     # окрім першого та останнього
+    """p_start_waves - список початків p піків
+       P_end_waves - список кінців p піків"""
 
     p_start_waves = np.array(p_start_waves)
     p_end_waves = np.array(p_end_waves)
@@ -1047,7 +1055,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
 def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
-    signal = cleaned_signal[:190000]
+    signal = cleaned_signal[:350000]
     x = np.arange(len(signal))
 
     # Отрисовка сигнала
