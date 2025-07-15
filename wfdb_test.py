@@ -269,7 +269,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
             if (row[0] not in ids_with_variability):
                 continue
             # 780 - 800; 1081 < !!!! 42
-            if (line_count < 526):
+            if (line_count < 527):
                 continue
 
             print ("Hello")
@@ -1055,7 +1055,7 @@ def find_T_interval(t_start_waves, t_end_waves):
 
 def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
     # Входные данные (замени своими переменными)
-    signal = cleaned_signal[:350000]
+    signal = cleaned_signal[:400000]
     x = np.arange(len(signal))
 
     # Отрисовка сигнала
