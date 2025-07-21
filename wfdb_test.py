@@ -270,7 +270,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 continue
             # 780 - 800; 1081 < !!!! 42
 
-            if (line_count < 554):
+            if (line_count < 605):
 
                 continue
 
