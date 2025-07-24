@@ -190,7 +190,7 @@ def print_database():
 #######################################################################################################################
 #######################################################################################################################
 
-def get_information_about_sex(ECG_RR_intervals_keys):
+def get_information_about_sex(keys):
     """Get information about sex method
 
         input:
@@ -202,15 +202,15 @@ def get_information_about_sex(ECG_RR_intervals_keys):
             female_dict - list with female sexes"""
 
     # Dictionary with id's (as keys) and sex index (as values)
-    sex_dict = get_sex_for_each_id(ECG_RR_intervals_keys)
+    sex_dict = get_sex_for_each_id(keys)
 
     print("Sex: ", sex_dict)
 
     # Split sex_dict into two dictionaries: male_dict and female_dict
     # Dictionary for males with id's (as keys) and sex indexes (as values)
-    male_list = [k for k, v in sex_dict.items() if v == '1']
+    male_list = [k for k, v in sex_dict.items() if v == '0']
     # Dictionary for females with id's (as keys) and sex indexes (as values)
-    female_list = [k for k, v in sex_dict.items() if v == '0']
+    female_list = [k for k, v in sex_dict.items() if v == '1']
 
     print("Male:", male_list)
     print("Female:", female_list)
@@ -239,13 +239,14 @@ def get_age_ranges_for_male_and_female(ECG_RR_intervals_keys, male_ids_list, fem
     return male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict
 
 
-def calculate_linear_regression(ECG_RR_intervals, ECG_1_RR_intervals_HFD_dictionary):
+def calculate_linear_regression(RR_intervals_time_series_in_each_ECG, ECG_1_RR_intervals_HFD_dictionary):
     """Calculate linear regression method.
+        RR_intervals_time_series_in_each_ECG - dictionary with id as key and list as value with RR_intervals_time_series
         """
-    male_ids_list, female_ids_list = get_information_about_sex(ECG_RR_intervals.keys())
+    male_ids_list, female_ids_list = get_information_about_sex(RR_intervals_time_series_in_each_ECG.keys())
 
     male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict = (
-        get_age_ranges_for_male_and_female(ECG_RR_intervals.keys(), male_ids_list, female_ids_list))
+        get_age_ranges_for_male_and_female(RR_intervals_time_series_in_each_ECG.keys(), male_ids_list, female_ids_list))
 
     # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
     male_HFD_dict = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in male_ids_list if
