@@ -21,8 +21,8 @@ from wfdb import processing
 import neurokit2 as nk
 import pandas as pd
 
-#path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
-path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+path_to_dataset_folder = 'D:/SCIENCE/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
+#path_to_dataset_folder  = 'C:/Datasets/autonomic-aging-a-dataset-to-quantify-changes-of-cardiovascular-autonomic-function-during-healthy-aging-1.0.0'
 
 csv_info_file = 'subject-info.csv'
 
@@ -87,7 +87,7 @@ def sets_with_breaked_ECGs(breaked_first_ecg_ids, breaked_second_ecg_ids):
 
     return general, first_unique, second_unique
 
-def open_record_wfdb(id, min_point, max_point, remotely):
+def open_record_wfdb(id, min_point, max_point,   remotely):
     """Open record with wfdb"""
     record = None
 
@@ -103,49 +103,64 @@ def open_record_wfdb(id, min_point, max_point, remotely):
 #################################### EXTRACTING RR INTERVALS ##########################################################
 #######################################################################################################################
 def extract_cleaned_signal_and_R_peaks(signal, sampling_rate, show_graphics):
-    """BIO SPPY library for extracting R-peaks from ECG signal
+    """BIO SPPY library for extracting cleaned signal and R-peaks from ECG signal
         input:
             signal - ECG signal
             sampling_rate - sampling_rate
-            show_graphics - показати графік
+            show_graphics - show graphics
 
         output:
 
-            r_peaks, rr_intervals - R peaks and RR intervals
+            filtered_signal, r_peaks - filtered signal and R peaks time series
 
     """
 
     # signal, mdata = storage.load_txt('./examples/ecg.txt')
 
-    # Додання 500 відліків зліва та справа для коректного розпізнання сигналу 
+    # Додання 500 відліків зліва та справа для коректного подальшого розпізнання R-піків
     extended_signal = np.pad(signal, (500, 500), mode='edge')
 
-    # Для виявлення R-піків використовується бібліотека biosppy
+    # Для фільтрації ЕКГ, виявлення R-піків та побудови графіків використовується бібліотека biosppy
     out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=show_graphics)
-    r_peaks = out['rpeaks']  # Отримання індексів R-піків
 
-    #Відфільтрований сигнал, відступаємо від початку 500 і від кінця 500 (обернена операція до np.pad)
-    cleaned_signal = out[1][500:-500]
+    # Відфільтрований сигнал
+    filtered_extended = out['filtered']
 
-    # Відступаємо назад на 500 (обернена операція до np.pad)
+    # Відступаємо від початку 500 і від кінця 500 (обернена операція до np.pad)
+    # Чомусь на графіку в точці 500 не співпадає з початком обрізаного.
+    filtered_original = filtered_extended[500:-500]
+
+
+    ################################ PRINT CLEANED SIGNAL ############################################
+
+    print("CLEANED SIGNAL:")
+    print(filtered_original)
+
+    ###################################################################################################
+
+    # Отримання індексів R-піків
+    r_peaks = out['rpeaks']
+
+    # Відступаємо назад на 500 для індексів R-піків (обернена операція до np.pad)
     r_peaks = r_peaks - 500
-    #print(r_peaks)
+
     # Дополнительно: сохранение в файл
     #np.savetxt("rr_peaks/peaks_{0}.txt".format(id), r_peaks,
-    #           header="Peaks (s)", comments='', fmt="%.6f")
+    #           header="Peaks (ms)", comments='', fmt="%.6f")
 
-    # Process it and plot
-    #out = ecg.ecg(signal=extended_signal, sampling_rate=sampling_rate, show=True)
+    return filtered_original, r_peaks
 
+def calculate_RR_intervals(id, r_peaks):
+    """Calculate and save RR-intervals time series for each id
+        input:
+            id - id of record
+            r_peaks - time series of r_peaks
+    """
     # Вычисляем R-R интервалы (в милисекундах)
-    #rr_intervals = np.diff(r_peaks)
+    # rr_intervals = np.diff(r_peaks)
 
-    #np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(id), rr_intervals,
-    #           header="RR Intervals (s)", comments='', fmt="%.6f")
-
-    return cleaned_signal, r_peaks
-
-
+    # np.savetxt("rr_intervals/rr_intervals_{0}.txt".format(id), rr_intervals,
+    #           header="RR Intervals (ms)", comments='', fmt="%.6f")
 
 def open_record(id, min_point, max_point, remotely):
 
@@ -303,6 +318,10 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 # Filter signal to cleaned and detect r_peaks
                 cleaned_signal, r_peaks = extract_cleaned_signal_and_R_peaks(ecg_signal,
                                                sampling_rate, show_graphics)
+
+
+
+
                 if (show_graphics):
                     print(cleaned_signal)
                     print("Signal length:", len(cleaned_signal))
