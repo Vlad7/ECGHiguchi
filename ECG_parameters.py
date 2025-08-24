@@ -133,6 +133,7 @@ def extract_cleaned_signal_and_R_peaks(signal, sampling_rate, show_graphics):
 
     ################################ PRINT CLEANED SIGNAL ############################################
 
+    #Maybe error!
     print("CLEANED SIGNAL:")
     print(filtered_original)
 
@@ -287,7 +288,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
 
 
 
-            if (line_count < 714):
+            if (line_count < 852):
                 continue
 
             print ("Hello")
@@ -320,7 +321,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                                                sampling_rate, show_graphics)
 
 
-
+                ########################## Візуалізація відфільтрованого сигналу з R-піками ###########################
 
                 if (show_graphics):
                     print(cleaned_signal)
@@ -338,19 +339,19 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                     plt.scatter(valid_r_peaks, cleaned_signal[valid_r_peaks], color='red')
                     plt.show()
 
-
+                #######################################################################################################
 
                 import biosppy
 
-                # Обработка ЭКГ
+                # Обробка ЕКГ
                 #out = biosppy.signals.ecg.ecg(signal=ecg_signal, sampling_rate=500, show=True)
-
                 #t = biosppy.signals.ecg.getTPositions(ecg_proc=out, show=True)
                 # R-пики: out['rpeaks']
 
                 #for x in t[2]:
                 #    print(x)
 
+                # Margin 200 for correct delineation
                 margin = 200  # or adjust based on your delineation window size
                 valid_r_peaks = r_peaks[(r_peaks > margin) & (r_peaks < len(cleaned_signal) - margin)]
 
@@ -383,7 +384,7 @@ def read_ECGs_annotation_data(is_remotely, except_breaked):
                 count_plot = 100
                 if show_graphics:
                     cleaned_signal = cleaned_signal - isoline
-                    plot_ECG_parameters(cleaned_signal, waves, count_plot)
+                    plot_ECG_features(cleaned_signal, waves, count_plot)
 
 
 
@@ -1075,35 +1076,42 @@ def find_T_interval(t_start_waves, t_end_waves):
 
     return t_duration
 
-def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
-    # Входные данные (замени своими переменными)
+def plot_ECG_features(cleaned_signal, waves_peaks, count_plot):
+    """Plot ECG features function
 
+        input:
+            cleaned_signal - filtered signal
+            waves_peaks - peaks of waves
+            count_plot - points to plot"""
+
+    # Changable
     signal = cleaned_signal[:480000]
-
-
-
-
     x = np.arange(len(signal))
 
-    # Отрисовка сигнала
+    ############################################## Plot peaks #########################################################
+
     plt.figure(figsize=(12, 6))
+
+    #Plot filtered signal
     plt.plot(x, signal, label="ECG", color="black")
-    plt.scatter(x[waves_peaks["ECG_R_Peaks"][:count_plot]],
-                signal[waves_peaks["ECG_R_Peaks"][:count_plot]], color='red', label="R-peaks")
 
-    print(waves_peaks["ECG_P_Peaks"][:count_plot])
-    p_peaks = np.array(waves_peaks["ECG_P_Peaks"][:count_plot]).astype(int)
-    print(p_peaks)
+    #Plot R-peaks
+    ecg_R_peaks = waves_peaks["ECG_R_Peaks"][:count_plot]
+    plt.scatter(x[ecg_R_peaks], signal[ecg_R_peaks], color='red', label="R-peaks")
 
-    plt.scatter(x[p_peaks], signal[p_peaks], color='green', label="P-peaks")
-    plt.scatter(x[waves_peaks["ECG_T_Peaks"].to_numpy().astype(int)[:count_plot]],
-                signal[waves_peaks["ECG_T_Peaks"].to_numpy().astype(int)[:count_plot]], color='blue', label="T-peaks")
+    #Plot P-peaks
+    #print(waves_peaks["ECG_P_Peaks"][:count_plot])
+    ecg_P_peaks = np.array(waves_peaks["ECG_P_Peaks"][:count_plot]).astype(int)
+    #ecg_P_peaks = waves_peaks["ECG_P_Peaks"][:count_plot]
+    plt.scatter(x[ecg_P_peaks], signal[ecg_P_peaks], color='green', label="P-peaks")
+
+    #Plot T-peaks
+    ecg_T_peaks = waves_peaks["ECG_T_Peaks"].to_numpy().astype(int)[:count_plot]
+    #ecg_T_peaks = waves_peaks["ECG_T_Peaks"][:count_plot]
+    plt.scatter(x[ecg_T_peaks], signal[ecg_T_peaks], color='blue', label="T-peaks")
 
     # Изолиния
-    plt.axhline(y=0, color="gray", linestyle="--", linewidth=1, label="Изолиния")
-
-
-
+    plt.axhline(y=0, color="gray", linestyle="--", linewidth=1, label="Isoline")
 
 
     # Custom events (insert your lists)
@@ -1115,17 +1123,17 @@ def plot_ECG_parameters(cleaned_signal, waves_peaks, count_plot):
             plt.axvline(x=event_indices.iloc[0], color=color, linestyle=style, label=label, linewidth=1.5)
 
     # Пример: замените списки на ваши
-    mark_events(waves_peaks["ECG_P_Onsets"][:count_plot], "green", "P начало")
-    mark_events(waves_peaks['ECG_P_Peaks'][:count_plot], "lime", "P пик", style='-.')
-    mark_events(waves_peaks["ECG_P_Offsets"][:count_plot], "green", "P конец", style=':')
+    mark_events(waves_peaks["ECG_P_Onsets"][:count_plot], "green", "P start")
+    mark_events(waves_peaks['ECG_P_Peaks'][:count_plot], "lime", "P peak", style='-.')
+    mark_events(waves_peaks["ECG_P_Offsets"][:count_plot], "green", "P end", style=':')
 
     mark_events(waves_peaks['ECG_Q_Peaks'][:count_plot], "blue", "Q", style='--')
     mark_events(waves_peaks['ECG_R_Peaks'][:count_plot], "red", "R peak", style='--')
     mark_events(waves_peaks['ECG_S_Peaks'][:count_plot], "blue", "S", style='--')
 
-    mark_events(waves_peaks["ECG_T_Onsets"][:count_plot], "purple", "T начало")
-    mark_events(waves_peaks['ECG_T_Peaks'][:count_plot], "magenta", "T пик", style='-.')
-    mark_events(waves_peaks["ECG_T_Offsets"][:count_plot], "purple", "T конец", style=':')
+    mark_events(waves_peaks["ECG_T_Onsets"][:count_plot], "purple", "T start")
+    mark_events(waves_peaks['ECG_T_Peaks'][:count_plot], "magenta", "T peak", style='-.')
+    mark_events(waves_peaks["ECG_T_Offsets"][:count_plot], "purple", "T end", style=':')
 
     # Легенда и стили
     plt.legend(loc='upper right')
