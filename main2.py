@@ -239,14 +239,15 @@ def get_age_ranges_for_male_and_female(ECG_RR_intervals_keys, male_ids_list, fem
     return male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict
 
 
-def calculate_linear_regression(RR_intervals_time_series_in_each_ECG, ECG_1_RR_intervals_HFD_dictionary):
+
+def calculate_linear_regression(RR_intervals_time_series_of_each_ECG, ECG_1_RR_intervals_HFD_dictionary):
     """Calculate linear regression method.
-        RR_intervals_time_series_in_each_ECG - dictionary with id as key and list as value with RR_intervals_time_series
+        RR_intervals_time_series_of_each_ECG - dictionary with id as key and list as value with RR_intervals_time_series
         """
-    male_ids_list, female_ids_list = get_information_about_sex(RR_intervals_time_series_in_each_ECG.keys())
+    male_ids_list, female_ids_list = get_information_about_sex(RR_intervals_time_series_of_each_ECG.keys())
 
     male_id_ageRangeIndex_dict, female_id_ageRangeIndex_dict = (
-        get_age_ranges_for_male_and_female(RR_intervals_time_series_in_each_ECG.keys(), male_ids_list, female_ids_list))
+        get_age_ranges_for_male_and_female(RR_intervals_time_series_of_each_ECG.keys(), male_ids_list, female_ids_list))
 
     # Фильтруем ECG_1_RR_intervals_HFD_dictionary, оставляя только те записи, у которых ключи есть в male_age_dict
     male_HFD_dict = {k: ECG_1_RR_intervals_HFD_dictionary[k] for k in male_ids_list if
@@ -283,54 +284,50 @@ def calculate_linear_regression(RR_intervals_time_series_in_each_ECG, ECG_1_RR_i
     ##############################################################################################
     ##############################################################################################
 
-    find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
+    find_both_sexes_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
                         male_slope, male_intercept, female_slope, female_intercept)
 
-
-
-
-def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
+def find_both_sexes_biological_age(male_age_category_ids_dict, female_age_category_ids_dict, male_HFD_dict, female_HFD_dict,
                         male_slope, male_intercept, female_slope, female_intercept):
     """Method for finding biological age
         male_age_category_ids_dict - dictionary for males with age category as key and ids list as value
         female_age_category_ids_dict - dictionary for females with age category as key and ids list as value
     """
-    print("Male")
-    male_train_dataset, male_test_dataset = (
-        split_rr_intervals_on_train_and_test_datasets(male_age_category_ids_dict))
+    find_biological_age("Male", male_age_category_ids_dict, male_HFD_dict, male_slope, male_intercept)
+    find_biological_age("Female", female_age_category_ids_dict, female_HFD_dict, female_slope, female_intercept)  
+    
+def find_biological_age(sex, age_category_ids_dict, HFD_dictionary, slope, intercept):
+    """
 
-    print("Female")
-    female_train_dataset, female_test_dataset = split_rr_intervals_on_train_and_test_datasets(
-        female_age_category_ids_dict)
+    :param
+            sex:string with sex ('Male' or 'Female')
+            age_category_ids_dict:dictionary with age_category (range or index?) as key and list of IDs as value
+            HFD_dictionary:
+    :return:
+    """
 
-    male_hfd_average_by_age_range = HFD_average_by_age_range(male_train_dataset, male_HFD_dict)
-    female_hfd_average_by_age_range = HFD_average_by_age_range(female_test_dataset, female_HFD_dict)
-
-    write_average_HFD_values_for_each_age_range('male', male_hfd_average_by_age_range)
-    write_average_HFD_values_for_each_age_range('female', male_hfd_average_by_age_range)
+    print(sex)
+    train_dataset, test_dataset = split_rr_intervals_on_train_and_test_datasets(age_category_ids_dict)
+    hfd_average_by_age_range = HFD_average_by_age_range(train_dataset, HFD_dictionary)
+    write_average_HFD_values_for_each_age_range(sex.lower(), hfd_average_by_age_range)
 
     print("Average method!\n")
-    print("Male")
-    for age_range in male_test_dataset:
-        for id in male_test_dataset[age_range]:
-            age_category = estimate_biological_age(male_hfd_average_by_age_range, male_HFD_dict[id])
-            print("Real age_range: {0}, fined age range: {1}".format(age_range, age_category))
+    print(sex)
 
-    print("Female")
-    for age_range in male_test_dataset:
-        for id in male_test_dataset[age_range]:
-            age_category = estimate_biological_age(male_hfd_average_by_age_range, male_HFD_dict[id])
+    for age_range in test_dataset:
+        for id in test_dataset[age_range]:
+            age_category = estimate_biological_age(hfd_average_by_age_range, HFD_dictionary[id])
             print("Real age_range: {0}, fined age range: {1}".format(age_range, age_category))
 
     print("Linear regression method!\n")
+    print(sex)
 
-    print("Male")
     # Список ошибок
-    errors = []
-
-    for age_range in male_test_dataset:
-        for id in male_test_dataset[age_range]:
-            number_age_category = int(estimate_biological_age_by_regression_line(male_HFD_dict[id], male_slope, male_intercept))
+    squared_errors = []
+    
+    for age_range in test_dataset:
+        for id in test_dataset[age_range]:
+            number_age_category = int(estimate_biological_age_by_regression_line(HFD_dictionary[id], slope, intercept))
             category = get_age_category_from_number(number_age_category)
 
             # Присутствует систематическая ошибка!
@@ -340,33 +337,29 @@ def find_biological_age(male_age_category_ids_dict, female_age_category_ids_dict
             pred_age_num = get_average_age(category)
 
             # Добавляем квадрат ошибки
-            errors.append((real_age_num - pred_age_num) ** 2)
+            squared_errors.append((real_age_num - pred_age_num) ** 2)
 
             print("Real age_range: {0}, finded age range: {1}".format(age_range, category))
 
             # Count number of ECG's with both HFD values per each age group
 
-    MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP = {}
-    FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP = {}
-    for age_category in male_age_category_ids_dict:
-        MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP[age_category] = len(male_age_category_ids_dict[age_category])
-        #if (RECORDS_COUNT_PER_EACH_AGE_GROUP.keys().__contains__(age_groups[row[1]])):
-        #    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] += 1
-        #else:
-        #    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] = 1
-    for age_category in female_age_category_ids_dict:
-        FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP[age_category] = len(male_age_category_ids_dict[age_category])
-    write_number_of_ECGs_per_age_range_for_both_HFD('male', MALE_RECORDS_COUNT_PER_EACH_AGE_GROUP)
-    write_number_of_ECGs_per_age_range_for_both_HFD('female', FEMALE_RECORDS_COUNT_PER_EACH_AGE_GROUP)
-
-
-
-
-
-
     # Вычисляем среднеквадратическую ошибку
-    mse = np.mean(errors)
+    mse = np.mean(squared_errors)
     print(f"\nMean Squared Error (MSE): {mse:.4f}")
+    RECORDS_COUNT_PER_EACH_AGE_GROUP = {}
+    
+    for age_category in age_category_ids_dict:
+        RECORDS_COUNT_PER_EACH_AGE_GROUP[age_category] = len(age_category_ids_dict[age_category])
+        
+        
+
+    write_number_of_ECGs_per_age_range_for_both_HFD(sex.lower(), RECORDS_COUNT_PER_EACH_AGE_GROUP)
+  
+    
+    
+    return train_dataset, test_dataset
+
+
 
 def get_average_age(age_range):
 
@@ -374,7 +367,10 @@ def get_average_age(age_range):
         min_age, max_age = map(int, age_range.split(" - "))
         return (min_age + max_age) / 2
 
-
+#if (RECORDS_COUNT_PER_EACH_AGE_GROUP.keys().__contains__(age_groups[row[1]])):
+#    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] += 1
+#else:
+#    RECORDS_COUNT_PER_EACH_AGE_GROUP[age_groups[row[1]]] = 1
 def get_age_category_from_number(number):
     number_series = pd.Series([number])
 
